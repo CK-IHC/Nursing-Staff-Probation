@@ -1,0 +1,10 @@
+# Cloudflare Worker that hosts the Nursing Staff Probation Management frontend (static assets).
+# Backend/API lives entirely in Google Apps Script — this Worker has no backend code.
+
+name = "nursing-staff-probation"
+compatibility_date = "2024-11-01"
+
+[assets]
+directory = "./frontend"
+# No not_found_handling needed: the frontend is a hash-router SPA (#/dashboard) so every
+# client-side navigation stays on "/" — the server never sees any path but "/" and real static files.

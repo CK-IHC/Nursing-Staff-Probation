@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ระบบบริหารช่วงทดลองงานพยาบาล</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Trirong:ital,wght@0,400;0,500;0,600;1,400&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<!-- ===================== หน้าเข้าสู่ระบบ ===================== -->
+<div id="login-view" class="login-screen">
+  <button type="button" id="login-gear-btn" class="gear-fab" aria-label="เข้าสู่ผู้ดูแลระบบ" title="เข้าสู่ผู้ดูแลระบบ">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+  <div class="login-card">
+    <div class="login-brand">
+      <p>Nursing Staff Probation Management</p>
+    </div>
+    <form id="login-form">
+      <label>เบอร์มือถือ (Mobile Phone)</label>
+      <input type="tel" id="login-phone" placeholder="เช่น 0812345678" autocomplete="tel" inputmode="numeric" required />
+      <button type="submit" class="btn btn-primary btn-block">เข้าสู่ระบบ</button>
+      <p id="login-error" class="login-error"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== โครงหลักของแอป (หลังล็อกอิน) ===================== -->
+<div id="app-shell" class="app-shell hidden">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-title" id="app-title-text">ระบบทดลองงานพยาบาล</span>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <button id="sidebar-collapse-btn" class="sidebar-collapse-btn" aria-label="หุบ/ขยายเมนู" title="หุบ/ขยายเมนู">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+  </aside>
+  <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+  <div class="main-col">
+    <header class="topbar">
+      <button id="sidebar-toggle" class="icon-btn" aria-label="เปิด/ปิดเมนู"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <h2 id="page-title">แดชบอร์ด</h2>
+      <div class="topbar-user">
+        <div class="print-orientation-toggle" title="ทิศทางกระดาษเวลาพิมพ์รายงาน">
+          <button type="button" id="print-orient-portrait" class="orient-btn">แนวตั้ง</button>
+          <button type="button" id="print-orient-landscape" class="orient-btn">แนวนอน</button>
+        </div>
+        <span id="topbar-user-name">—</span>
+        <span id="topbar-user-role" class="role-chip">—</span>
+        <button id="logout-btn" class="btn btn-ghost">ออกจากระบบ</button>
+      </div>
+    </header>
+    <main id="app-content" class="app-content"></main>
+  </div>
+  <nav class="bottom-nav hidden" id="bottom-nav"></nav>
+</div>
+
+<div id="print-header" class="print-only"></div>
+<div id="print-footer" class="print-only"></div>
+<div id="print-isolated" class="print-only"></div>
+
+<script src="js/config.js"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/vendor/jsQR.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
