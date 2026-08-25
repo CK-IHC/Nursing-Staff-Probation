@@ -1,7 +1,7 @@
 /**
  * Admins.gs — บัญชีผู้ดูแลระบบ (Admin) เก็บในชีต Admins แยกจากชีต Staff โดยเด็ดขาด
- * คนคนหนึ่ง ณ เวลาใดเวลาหนึ่งเป็นได้แค่อย่างใดอย่างหนึ่ง (Staff หรือ Admin) — ให้สิทธิ์ Admin คือย้ายข้อมูลตัวตน
- * (ชื่อ/เบอร์) จากชีต Staff มาชีต Admins แล้วลบออกจาก Staff เด็ดขาด ไม่ปรากฏใน Staff Directory อีกต่อไป
+ * คนคนหนึ่ง ณ เวลาใดเวลาหนึ่งเป็นได้แค่อย่างใดอย่างหนึ่ง (Staff หรือ Admin) — เพิ่ม Admin คือลงทะเบียนบัญชีใหม่
+ * ในชีตนี้โดยตรง ไม่ผูกกับข้อมูลพนักงานคนใดในระบบ (ต่างจากการเป็นพนักงานใน Staff Directory โดยสิ้นเชิง)
  * ลบสิทธิ์ Admin (revoke) คือปิดใช้งานบัญชี Admin นั้น — ระบบไม่สร้างข้อมูลพนักงานกลับให้อัตโนมัติ
  * (ถ้าต้องการให้กลับมาเป็นพนักงาน ต้องเพิ่มข้อมูลพนักงานใหม่ผ่านหน้า Staff Directory)
  */
@@ -17,28 +17,9 @@ function listAdmins_() {
   return ok_(rows.map(sanitizeAdmin_));
 }
 
-/** เพิ่ม Admin — ระบุ fromEmployeeId เพื่อย้ายข้อมูลตัวตนจากพนักงานที่มีอยู่แล้ว (ลบออกจากชีต Staff ทันที)
- *  หรือกรอกข้อมูลเอง (EmployeeID/ThaiName/Phone) เพื่อสร้างบัญชี Admin ใหม่ที่ไม่ผูกกับพนักงานคนใดในระบบ */
+/** ลงทะเบียน Admin ใหม่โดยตรง (EmployeeID/ThaiName/Phone) — ไม่ผูกกับพนักงานคนใดในระบบ */
 function createAdmin_(ctx) {
   var body = ctx.body;
-  var now = new Date().toISOString();
-
-  if (body.fromEmployeeId) {
-    var staff = getById_('Staff', 'EmployeeID', body.fromEmployeeId);
-    if (!staff) throw HttpError_('NOT_FOUND', 'ไม่พบข้อมูลพนักงาน');
-    if (getById_('Admins', 'EmployeeID', staff.EmployeeID)) {
-      throw HttpError_('CONFLICT', 'มีบัญชี Admin นี้อยู่แล้ว');
-    }
-    var record = {
-      EmployeeID: staff.EmployeeID, ThaiName: staff.ThaiName, NickName: staff.NickName,
-      Phone: staff.Phone, Active: 'TRUE', Note: staff.Note || '', CreatedAt: now, UpdatedAt: now,
-    };
-    insertRow_('Admins', record);
-    deleteRowByField_('Staff', 'EmployeeID', staff.EmployeeID);
-    writeLog_(ctx.session.empId, 'GrantAdmin', 'Admin:' + staff.EmployeeID, 'ย้ายจากชีต Staff');
-    return ok_(sanitizeAdmin_(record), 'ให้สิทธิ์ Admin สำเร็จ');
-  }
-
   var employeeId = String(body.EmployeeID || '').trim();
   var thaiName = String(body.ThaiName || '').trim();
   var phone = String(body.Phone || '').trim();
@@ -51,13 +32,14 @@ function createAdmin_(ctx) {
   if (findByPhone_(phone, null)) {
     throw HttpError_('CONFLICT', 'มีบัญชีที่ใช้เบอร์มือถือนี้เข้าสู่ระบบอยู่แล้ว');
   }
-  var newRecord = {
+  var now = new Date().toISOString();
+  var record = {
     EmployeeID: employeeId, ThaiName: thaiName, NickName: String(body.NickName || '').trim(),
     Phone: phone, Active: 'TRUE', Note: String(body.Note || '').trim(), CreatedAt: now, UpdatedAt: now,
   };
-  insertRow_('Admins', newRecord);
-  writeLog_(ctx.session.empId, 'GrantAdmin', 'Admin:' + employeeId, 'สร้างใหม่');
-  return ok_(sanitizeAdmin_(newRecord), 'เพิ่ม Admin สำเร็จ');
+  insertRow_('Admins', record);
+  writeLog_(ctx.session.empId, 'GrantAdmin', 'Admin:' + employeeId, 'ลงทะเบียนใหม่');
+  return ok_(sanitizeAdmin_(record), 'ลงทะเบียน Admin สำเร็จ');
 }
 
 function updateAdmin_(ctx) {
