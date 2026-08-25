@@ -152,7 +152,7 @@ export async function render(container) {
       <button type="button" class="tab-btn" data-tab="walkround">Walk Round</button>
       <button type="button" class="tab-btn" data-tab="org">Cost Center</button>
       <button type="button" class="tab-btn" data-tab="position">ตำแหน่ง / Job Function</button>
-      <button type="button" class="tab-btn" data-tab="users">จัดการสิทธิ์ผู้ใช้งาน</button>
+      <button type="button" class="tab-btn" data-tab="admin">Admin</button>
     </div>
 
     <div class="tab-pane" data-pane="general">
@@ -218,11 +218,12 @@ export async function render(container) {
       </div>
     </div>
 
-    <div class="tab-pane hidden" data-pane="users">
+    <div class="tab-pane hidden" data-pane="admin">
       <div class="card">
-        <div class="toolbar"><h3 style="margin:0;">จัดการสิทธิ์ผู้ใช้งาน</h3><span class="spacer"></span><button id="add-user-btn" class="btn btn-primary btn-sm">+ เพิ่มรายชื่อ</button></div>
+        <div class="toolbar"><h3 style="margin:0;">ผู้ดูแลระบบ (Admin)</h3><span class="spacer"></span><button id="add-user-btn" class="btn btn-primary btn-sm">+ เพิ่ม Admin</button></div>
+        <p style="color:var(--muted); font-size:13.5px; margin:-6px 0 12px;">รายชื่อบัญชีที่มีสิทธิ์ Admin ทั้งหมด — แยกจากรายการ Staff Directory (ซึ่งไม่แสดงบัญชี Admin ปนอยู่)</p>
         <div class="table-wrap">
-          <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>สิทธิ์การใช้งาน</th><th>จัดการ</th></tr></thead><tbody id="users-body"></tbody></table>
+          <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เบอร์มือถือ (ใช้เข้าสู่ระบบ)</th><th>จัดการ</th></tr></thead><tbody id="users-body"></tbody></table>
         </div>
       </div>
     </div>`;
@@ -393,28 +394,20 @@ export async function render(container) {
     } catch (err) { toastError(err.message); }
   });
 
-  // ---------- จัดการสิทธิ์ผู้ใช้งาน ----------
+  // ---------- Admin: รายชื่อบัญชีที่มีสิทธิ์ Admin เท่านั้น (แยกจากรายการ Staff Directory ทั่วไป) ----------
   async function loadUsers() {
-    const staffList = await api.get('/api/staff?includeAdmin=true');
+    const staffList = (await api.get('/api/staff?includeAdmin=true')).filter((u) => u.Role === 'Admin');
     const usersBody = document.getElementById('users-body');
     if (!usersBody) return; // ผู้ใช้เปลี่ยนหน้าไปแล้วระหว่างรอโหลด
     usersBody.innerHTML = staffList.map((u) => `
       <tr>
-        <td>${escapeHtml(u.EmployeeID)}</td><td>${escapeHtml(u.ThaiName)}</td>
-        <td><select data-role="${u.EmployeeID}"><option value="User" ${u.Role !== 'Admin' ? 'selected' : ''}>Staff</option><option value="Admin" ${u.Role === 'Admin' ? 'selected' : ''}>Admin</option></select></td>
+        <td>${escapeHtml(u.EmployeeID)}</td><td>${escapeHtml(u.ThaiName)}</td><td>${escapeHtml(u.Phone || '—')}</td>
         <td class="row-actions">
           <button class="btn btn-ghost btn-sm" data-edit-user="${u.EmployeeID}">แก้ไข</button>
-          ${u.Role === 'Admin' ? `<button class="btn btn-danger btn-sm" data-revoke="${u.EmployeeID}">ลบสิทธิ์ Admin</button>` : ''}
+          <button class="btn btn-danger btn-sm" data-revoke="${u.EmployeeID}">ลบสิทธิ์ Admin</button>
         </td>
-      </tr>`).join('') || '<tr><td colspan="4" class="empty-state">ยังไม่มีผู้ใช้งาน</td></tr>';
+      </tr>`).join('') || '<tr><td colspan="4" class="empty-state">ยังไม่มีผู้ดูแลระบบ</td></tr>';
 
-    document.querySelectorAll('[data-role]').forEach((sel) => sel.addEventListener('change', async () => {
-      try {
-        await withLoading(() => api.put(`/api/staff/${sel.dataset.role}`, { Role: sel.value }));
-        toastSuccess('อัปเดตสิทธิ์การใช้งานสำเร็จ');
-        loadUsers();
-      } catch (err) { toastError(err.message); }
-    }));
     document.querySelectorAll('[data-edit-user]').forEach((btn) => btn.addEventListener('click', async () => {
       const staff = staffList.find((x) => x.EmployeeID === btn.dataset.editUser);
       staffForm(staff, loadUsers);
