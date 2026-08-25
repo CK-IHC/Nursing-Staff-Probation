@@ -4,6 +4,7 @@ import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { toastSuccess, toastError } from '../components/toast.js';
 import { withLoading } from '../components/loading.js';
 import { escapeHtml, exportCsv, parseCsv } from '../utils.js';
+import { attachStaffSearch } from '../components/staffSearch.js';
 
 const LIST_CATEGORIES = [
   { key: 'Position', label: 'รายการตำแหน่ง (Position)' },
@@ -466,11 +467,10 @@ export async function render(container) {
       <form id="grant-form">
         <div class="tab-pane" data-pane="existing">
           <p style="color:var(--muted); font-size:13.5px; margin:4px 0 12px;">ข้อมูลพนักงานที่เลือกจะถูกย้ายไปชีต Admin และ<b>ลบออกจาก Staff Directory ทันที</b> (ประวัติทดลองงาน/ปฐมนิเทศเดิมจะไม่แสดงอีกต่อไป)</p>
-          <div class="field"><label>เลือกพนักงานที่จะให้สิทธิ์ Admin</label>
-            <select id="grant-emp">
-              <option value="">-- เลือกพนักงาน --</option>
-              ${nonAdminStaff.map((s2) => `<option value="${s2.EmployeeID}">${escapeHtml(s2.EmployeeID)} — ${escapeHtml(s2.ThaiName)}</option>`).join('')}
-            </select>
+          <div class="field" style="position:relative;"><label>ค้นหาพนักงาน (Employee ID / ชื่อ) ที่จะให้สิทธิ์ Admin</label>
+            <input id="grant-emp-search" placeholder="พิมพ์ Employee ID หรือชื่อเพื่อค้นหา..." autocomplete="off" />
+            <input type="hidden" id="grant-emp" />
+            <div id="grant-emp-results" class="search-dropdown hidden"></div>
           </div>
         </div>
         <div class="tab-pane hidden" data-pane="new">
@@ -488,6 +488,12 @@ export async function render(container) {
         </div>
       </form>`;
     const body = openModal('เพิ่มรายชื่อผู้ดูแลระบบ', wrap, { wide: true });
+    attachStaffSearch({
+      searchInput: body.querySelector('#grant-emp-search'),
+      hiddenInput: body.querySelector('#grant-emp'),
+      resultsBox: body.querySelector('#grant-emp-results'),
+      allStaff: nonAdminStaff,
+    });
     let activeGrantTab = 'existing';
     body.querySelectorAll('#ga-tabs .tab-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
