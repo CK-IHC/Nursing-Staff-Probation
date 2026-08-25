@@ -13,27 +13,42 @@ function bucketOf(hireDate) {
   return 'M4';
 }
 
-function monthStatus(dateValue) {
-  return dateValue ? 'เสร็จสิ้น' : 'ยังไม่ดำเนินการ';
+// จัดกลุ่ม byPosition (position ตรงตัวจาก dashboardSummary_) ตามชื่อ position ฐาน โดยตัดส่วนท้าย "level N" ออก
+// เช่น "Registered Nurse level 1" และ "Registered Nurse level 3" รวมเป็นกลุ่ม "Registered Nurse" เดียว
+// พร้อมแยกย่อยยอดแต่ละ level ไว้ใต้ยอดรวม — position ที่ไม่มี "level" ต่อท้าย (เช่น Navigator) ไม่มีการแยกย่อย
+function groupByBasePosition(byPosition) {
+  const groups = {};
+  byPosition.forEach((p) => {
+    const m = p.position.match(/^(.*?)\s+level\s+(\d+)$/i);
+    const base = m ? m[1].trim() : p.position;
+    if (!groups[base]) groups[base] = { base, count: 0, levels: [] };
+    groups[base].count += p.count;
+    if (m) groups[base].levels.push({ level: Number(m[2]), count: p.count });
+  });
+  const list = Object.values(groups);
+  list.forEach((g) => g.levels.sort((a, b) => a.level - b.level));
+  list.sort((a, b) => b.count - a.count);
+  return list;
 }
-function monthBadge(status) {
-  return status === 'เสร็จสิ้น' ? 'badge-green' : 'badge-gray';
+
+function reminderRowsHtml(rows) {
+  return rows.length === 0 ? '<tr><td colspan="3" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>' : rows.map((r) => `
+    <tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td></tr>`).join('');
 }
 
 export async function render(container) {
-  const [summary, activeStaff, round60, round119] = await Promise.all([
+  const [summary, activeStaff, reminders] = await Promise.all([
     api.get('/api/dashboard/summary'),
     api.get('/api/staff?status=Active'),
-    api.get('/api/evaluations/list?round=60'),
-    api.get('/api/evaluations/list?round=119'),
+    api.get('/api/dashboard/reminders'),
   ]);
   const { statusCounts: c, byPosition } = summary;
+  const { ladderDue, hrSendDue } = reminders;
 
   const buckets = { M1: [], M2: [], M3: [], M4: [] };
   activeStaff.forEach((s) => { if (s.HireDate) buckets[bucketOf(s.HireDate)].push(s); });
 
-  const round60ByEmp = Object.fromEntries(round60.map((r) => [r.EmployeeID, r]));
-  const round119ByEmp = Object.fromEntries(round119.map((r) => [r.EmployeeID, r]));
+  const positionGroups = groupByBasePosition(byPosition);
 
   container.innerHTML = `
     <div class="toolbar">
@@ -64,40 +79,38 @@ export async function render(container) {
 
     <div class="section-title">สรุปจำนวนตาม Position (On Probation)</div>
     <div class="stat-grid">
-      ${byPosition.map((p) => `<div class="stat-card stat-outline"><span class="stat-label">${escapeHtml(p.position)}</span><span class="stat-value">${p.count} <small style="font-size:14px; font-weight:400;">คน</small></span></div>`).join('') || '<div class="empty-state">ไม่มีข้อมูล</div>'}
+      ${positionGroups.map((g) => `
+        <div class="stat-card stat-outline">
+          <span class="stat-label">${escapeHtml(g.base)}</span>
+          <span class="stat-value">${g.count} <small style="font-size:14px; font-weight:400;">คน</small></span>
+          ${g.levels.length ? `<span style="font-size:12.5px; color:var(--muted);">${g.levels.map((l) => `Level ${l.level}: ${l.count}`).join(' · ')}</span>` : ''}
+        </div>`).join('') || '<div class="empty-state">ไม่มีข้อมูล</div>'}
     </div>
 
     <div class="toolbar" style="margin-top:22px;">
-      <div class="section-title" style="margin:0;">ตารางสรุปรายเดือน (On Probation)</div>
+      <div class="section-title" style="margin:0;">รายการแจ้งเตือน (On Probation)</div>
       <span class="spacer"></span>
-      <button id="dash-export-monthly" class="btn btn-secondary btn-sm">Export Excel</button>
-      <button id="dash-print-monthly" class="btn btn-primary btn-sm">Print</button>
+      <button id="dash-export-reminders" class="btn btn-secondary btn-sm">Export Excel</button>
+      <button id="dash-print-reminders" class="btn btn-primary btn-sm">Print</button>
     </div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th>ชื่อพยาบาล</th><th>สถานะเดือนที่ 1</th><th>สถานะเดือนที่ 2</th><th>สถานะเดือนที่ 3</th><th>สถานะเดือนที่ 4</th><th>ผลประเมินครั้งที่ 1 (60 วัน)</th><th>ผลประเมินครั้งที่ 2 (119 วัน)</th></tr></thead>
-        <tbody id="dash-monthly-body"></tbody>
-      </table>
+    <div class="card" style="margin-bottom:16px;">
+      <h3>Apply Ladder Status — ยังไม่ดำเนินการ (เดือนที่ 5, 8, 10)</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th></tr></thead>
+          <tbody>${reminderRowsHtml(ladderDue)}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Orientation Checklist — ยังไม่ส่ง HR (เดือนที่ 5-11)</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th></tr></thead>
+          <tbody>${reminderRowsHtml(hrSendDue)}</tbody>
+        </table>
+      </div>
     </div>`;
-
-  function monthlyRowsHtml() {
-    return activeStaff.length === 0 ? '<tr><td colspan="7" class="empty-state">ไม่มีพนักงานที่อยู่ระหว่างทดลองงาน</td></tr>' : activeStaff.map((s) => {
-      const m1 = monthStatus(s.Orient1Date), m2 = monthStatus(s.Orient2Date), m3 = monthStatus(s.Orient3Date), m4 = monthStatus(s.Orient4Date);
-      const r60 = round60ByEmp[s.EmployeeID], r119 = round119ByEmp[s.EmployeeID];
-      return `<tr>
-        <td>${escapeHtml(s.EmployeeID)} — ${escapeHtml(s.ThaiName)}</td>
-        <td><span class="badge ${monthBadge(m1)}">${m1}</span></td>
-        <td><span class="badge ${monthBadge(m2)}">${m2}</span></td>
-        <td><span class="badge ${monthBadge(m3)}">${m3}</span></td>
-        <td><span class="badge ${monthBadge(m4)}">${m4}</span></td>
-        <td>${r60?.HasEval ? escapeHtml(r60.Result) : 'รอถึงกำหนด'}</td>
-        <td>${r119?.HasEval ? escapeHtml(r119.Result) : 'รอถึงกำหนด'}</td>
-      </tr>`;
-    }).join('');
-  }
-
-  const monthlyBody = document.getElementById('dash-monthly-body');
-  monthlyBody.innerHTML = monthlyRowsHtml();
 
   document.querySelectorAll('#month-grid [data-month]').forEach((el) => {
     el.addEventListener('click', () => {
@@ -111,12 +124,19 @@ export async function render(container) {
   });
 
   document.getElementById('dash-print').addEventListener('click', () => printReport('Dashboard Summary Report', `On Probation ${c.onProbation} · Passed ${c.passed} · Total Staff ${c.total}`));
-  document.getElementById('dash-print-monthly').addEventListener('click', () => {
-    const html = `<div class="table-wrap"><table class="data-table">
-      <thead><tr><th>ชื่อพยาบาล</th><th>สถานะเดือนที่ 1</th><th>สถานะเดือนที่ 2</th><th>สถานะเดือนที่ 3</th><th>สถานะเดือนที่ 4</th><th>ผลประเมินครั้งที่ 1 (60 วัน)</th><th>ผลประเมินครั้งที่ 2 (119 วัน)</th></tr></thead>
-      <tbody>${monthlyRowsHtml()}</tbody>
-    </table></div>`;
-    printIsolated('ตารางสรุปรายเดือน (On Probation)', '', html);
+  document.getElementById('dash-print-reminders').addEventListener('click', () => {
+    const html = `
+      <h3>Apply Ladder Status — ยังไม่ดำเนินการ (เดือนที่ 5, 8, 10)</h3>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th></tr></thead>
+        <tbody>${reminderRowsHtml(ladderDue)}</tbody>
+      </table></div>
+      <h3 style="margin-top:18px;">Orientation Checklist — ยังไม่ส่ง HR (เดือนที่ 5-11)</h3>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th></tr></thead>
+        <tbody>${reminderRowsHtml(hrSendDue)}</tbody>
+      </table></div>`;
+    printIsolated('รายการแจ้งเตือน (On Probation)', '', html);
   });
   document.getElementById('dash-export').addEventListener('click', () => {
     exportCsv('dashboard-summary.csv', [
@@ -135,13 +155,10 @@ export async function render(container) {
     ]);
   });
 
-  document.getElementById('dash-export-monthly').addEventListener('click', () => {
-    exportCsv('dashboard-monthly-summary.csv', activeStaff.map((s) => ({
-      EmployeeID: s.EmployeeID, ชื่อพยาบาล: s.ThaiName,
-      สถานะเดือนที่1: monthStatus(s.Orient1Date), สถานะเดือนที่2: monthStatus(s.Orient2Date),
-      สถานะเดือนที่3: monthStatus(s.Orient3Date), สถานะเดือนที่4: monthStatus(s.Orient4Date),
-      ผลประเมินครั้งที่1: round60ByEmp[s.EmployeeID]?.HasEval ? round60ByEmp[s.EmployeeID].Result : 'รอถึงกำหนด',
-      ผลประเมินครั้งที่2: round119ByEmp[s.EmployeeID]?.HasEval ? round119ByEmp[s.EmployeeID].Result : 'รอถึงกำหนด',
-    })));
+  document.getElementById('dash-export-reminders').addEventListener('click', () => {
+    exportCsv('dashboard-reminders.csv', [
+      ...ladderDue.map((r) => ({ ประเภทแจ้งเตือน: 'Apply Ladder Status', EmployeeID: r.EmployeeID, ชื่อ: r.ThaiName, เดือนที่: r.Month })),
+      ...hrSendDue.map((r) => ({ ประเภทแจ้งเตือน: 'Orientation Checklist — ส่ง HR', EmployeeID: r.EmployeeID, ชื่อ: r.ThaiName, เดือนที่: r.Month })),
+    ]);
   });
 }
