@@ -203,8 +203,8 @@ function insertRow_(tab, obj) {
   appendRow_(tab, obj);
 }
 
-// ลบแถวออกจากชีตจริง ๆ (ต่างจาก patchById_ ที่ตั้ง Active='FALSE' ไว้เฉย ๆ) — ใช้เฉพาะตอนย้ายข้อมูลตัวตน
-// ข้ามชีต (เช่น พนักงาน -> Admin ใน Admins.gs) ที่ต้องการให้ EmployeeID นั้นหายไปจากชีตเดิมเด็ดขาด ไม่ใช่แค่ถูกปิดใช้งาน
+// ลบแถวออกจากชีตจริง ๆ (ต่างจาก patchById_ ที่ตั้ง Active='FALSE' ไว้เฉย ๆ) — ใช้ตอน migrateStaffAdminsToAdminsSheet_
+// ย้ายบัญชี Admin เดิม (ก่อนแยกชีต Admins ออกมา) ออกจากชีต Staff เด็ดขาด ไม่ใช่แค่ถูกปิดใช้งาน
 function deleteRowByField_(tab, idField, idValue) {
   var sh = ss_().getSheetByName(tab);
   if (!sh) return false;

@@ -4,7 +4,6 @@ import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { toastSuccess, toastError } from '../components/toast.js';
 import { withLoading } from '../components/loading.js';
 import { escapeHtml, exportCsv, parseCsv } from '../utils.js';
-import { attachStaffSearch } from '../components/staffSearch.js';
 
 const LIST_CATEGORIES = [
   { key: 'Position', label: 'รายการตำแหน่ง (Position)' },
@@ -221,7 +220,7 @@ export async function render(container) {
     <div class="tab-pane hidden" data-pane="admin">
       <div class="card">
         <div class="toolbar"><h3 style="margin:0;">ผู้ดูแลระบบ (Admin)</h3><span class="spacer"></span><button id="add-admin-btn" class="btn btn-primary btn-sm">+ เพิ่ม Admin</button></div>
-        <p style="color:var(--muted); font-size:13.5px; margin:-6px 0 12px;">บันทึกแยกชีต (Admins) จากชีต Staff โดยเด็ดขาด — การให้สิทธิ์ Admin กับพนักงานที่มีอยู่แล้วจะย้ายข้อมูลตัวตนไปชีตนี้และลบออกจาก Staff Directory ทันที ไม่แสดงปนกันอีกต่อไป</p>
+        <p style="color:var(--muted); font-size:13.5px; margin:-6px 0 12px;">บันทึกแยกชีต (Admins) จากชีต Staff โดยเด็ดขาด — ลงทะเบียน Admin ใหม่ที่นี่โดยตรง ไม่ผูกกับข้อมูลพนักงานใน Staff Directory</p>
         <div class="table-wrap">
           <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เบอร์มือถือ (ใช้เข้าสู่ระบบ)</th><th>จัดการ</th></tr></thead><tbody id="admins-body"></tbody></table>
         </div>
@@ -456,72 +455,37 @@ export async function render(container) {
     }));
   }
 
-  document.getElementById('add-admin-btn').addEventListener('click', async () => {
-    const nonAdminStaff = await api.get('/api/staff');
+  document.getElementById('add-admin-btn').addEventListener('click', () => {
     const wrap = document.createElement('div');
     wrap.innerHTML = `
-      <div class="tabs" id="ga-tabs">
-        <button type="button" class="tab-btn active" data-tab="existing">จากพนักงานที่มีอยู่แล้ว</button>
-        <button type="button" class="tab-btn" data-tab="new">สร้างใหม่ (ไม่ผูกกับพนักงานในระบบ)</button>
-      </div>
       <form id="grant-form">
-        <div class="tab-pane" data-pane="existing">
-          <p style="color:var(--muted); font-size:13.5px; margin:4px 0 12px;">ข้อมูลพนักงานที่เลือกจะถูกย้ายไปชีต Admin และ<b>ลบออกจาก Staff Directory ทันที</b> (ประวัติทดลองงาน/ปฐมนิเทศเดิมจะไม่แสดงอีกต่อไป)</p>
-          <div class="field" style="position:relative;"><label>ค้นหาพนักงาน (Employee ID / ชื่อ) ที่จะให้สิทธิ์ Admin</label>
-            <input id="grant-emp-search" placeholder="พิมพ์ Employee ID หรือชื่อเพื่อค้นหา..." autocomplete="off" />
-            <input type="hidden" id="grant-emp" />
-            <div id="grant-emp-results" class="search-dropdown hidden"></div>
-          </div>
-        </div>
-        <div class="tab-pane hidden" data-pane="new">
-          <div class="form-grid">
-            <div class="field"><label>Employee ID *</label><input id="ga-EmployeeID" /></div>
-            <div class="field"><label>ชื่อ-นามสกุล *</label><input id="ga-ThaiName" /></div>
-            <div class="field"><label>ชื่อเล่น</label><input id="ga-NickName" /></div>
-            <div class="field"><label>เบอร์มือถือ * (ใช้เข้าสู่ระบบ)</label><input type="tel" id="ga-Phone" inputmode="numeric" /></div>
-            <div class="field field-full"><label>Note</label><textarea id="ga-Note" rows="2"></textarea></div>
-          </div>
+        <div class="form-grid">
+          <div class="field"><label>Employee ID *</label><input id="ga-EmployeeID" required /></div>
+          <div class="field"><label>ชื่อ-นามสกุล *</label><input id="ga-ThaiName" required /></div>
+          <div class="field"><label>ชื่อเล่น</label><input id="ga-NickName" /></div>
+          <div class="field"><label>เบอร์มือถือ * (ใช้เข้าสู่ระบบ)</label><input type="tel" id="ga-Phone" inputmode="numeric" required /></div>
+          <div class="field field-full"><label>Note</label><textarea id="ga-Note" rows="2"></textarea></div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="grant-cancel">ยกเลิก</button>
-          <button type="submit" class="btn btn-primary">ให้สิทธิ์ Admin</button>
+          <button type="submit" class="btn btn-primary">ลงทะเบียน Admin</button>
         </div>
       </form>`;
-    const body = openModal('เพิ่มรายชื่อผู้ดูแลระบบ', wrap, { wide: true });
-    attachStaffSearch({
-      searchInput: body.querySelector('#grant-emp-search'),
-      hiddenInput: body.querySelector('#grant-emp'),
-      resultsBox: body.querySelector('#grant-emp-results'),
-      allStaff: nonAdminStaff,
-    });
-    let activeGrantTab = 'existing';
-    body.querySelectorAll('#ga-tabs .tab-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        body.querySelectorAll('#ga-tabs .tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
-        body.querySelectorAll('.tab-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== btn.dataset.tab));
-        activeGrantTab = btn.dataset.tab;
-      });
-    });
+    const body = openModal('ลงทะเบียนผู้ดูแลระบบใหม่', wrap);
     body.querySelector('#grant-cancel').addEventListener('click', closeModal);
     body.querySelector('#grant-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const payload = {
+        EmployeeID: body.querySelector('#ga-EmployeeID').value.trim(),
+        ThaiName: body.querySelector('#ga-ThaiName').value.trim(),
+        NickName: body.querySelector('#ga-NickName').value.trim(),
+        Phone: body.querySelector('#ga-Phone').value.trim(),
+        Note: body.querySelector('#ga-Note').value.trim(),
+      };
+      if (!payload.EmployeeID || !payload.ThaiName || !payload.Phone) { toastError('กรุณากรอก Employee ID, ชื่อ-นามสกุล, เบอร์มือถือ ให้ครบ'); return; }
       try {
-        if (activeGrantTab === 'existing') {
-          const empId = body.querySelector('#grant-emp').value;
-          if (!empId) { toastError('กรุณาเลือกพนักงาน'); return; }
-          await withLoading(() => api.post('/api/admins', { fromEmployeeId: empId }));
-        } else {
-          const payload = {
-            EmployeeID: body.querySelector('#ga-EmployeeID').value.trim(),
-            ThaiName: body.querySelector('#ga-ThaiName').value.trim(),
-            NickName: body.querySelector('#ga-NickName').value.trim(),
-            Phone: body.querySelector('#ga-Phone').value.trim(),
-            Note: body.querySelector('#ga-Note').value.trim(),
-          };
-          if (!payload.EmployeeID || !payload.ThaiName || !payload.Phone) { toastError('กรุณากรอก Employee ID, ชื่อ-นามสกุล, เบอร์มือถือ ให้ครบ'); return; }
-          await withLoading(() => api.post('/api/admins', payload));
-        }
-        toastSuccess('ให้สิทธิ์ Admin สำเร็จ');
+        await withLoading(() => api.post('/api/admins', payload));
+        toastSuccess('ลงทะเบียน Admin สำเร็จ');
         closeModal();
         loadAdmins();
       } catch (err) { toastError(err.message); }
