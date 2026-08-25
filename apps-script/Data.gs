@@ -36,6 +36,9 @@ var SCHEMA_ = {
     'EmployeeID', 'EmployeeName', 'Position', 'HireDate', 'Buddy',
     'ChecklistJSON', 'SatisfactionScore', 'IssuesFound', 'ActionNeeded', 'ActionOwner', 'Status',
     'NextFollowUpDate', 'VisitorSignature', 'StaffSignature', 'Note', 'CreatedAt', 'UpdatedAt'],
+  // บัญชีผู้ดูแลระบบ (Admin) — เก็บแยกจากชีต Staff โดยเด็ดขาด ไม่ปนกับข้อมูลพนักงานที่มีประวัติทดลองงาน/ปฐมนิเทศ
+  // (ดู Admins.gs) คนละบทบาทกัน ณ เวลาใดเวลาหนึ่งเป็นได้แค่อย่างใดอย่างหนึ่ง (Staff หรือ Admin ไม่ปนกัน)
+  Admins: ['EmployeeID', 'ThaiName', 'NickName', 'Phone', 'Active', 'Note', 'CreatedAt', 'UpdatedAt'],
 };
 var SHEET_NAMES_ = Object.keys(SCHEMA_);
 
@@ -200,6 +203,25 @@ function insertRow_(tab, obj) {
   appendRow_(tab, obj);
 }
 
+// ลบแถวออกจากชีตจริง ๆ (ต่างจาก patchById_ ที่ตั้ง Active='FALSE' ไว้เฉย ๆ) — ใช้เฉพาะตอนย้ายข้อมูลตัวตน
+// ข้ามชีต (เช่น พนักงาน -> Admin ใน Admins.gs) ที่ต้องการให้ EmployeeID นั้นหายไปจากชีตเดิมเด็ดขาด ไม่ใช่แค่ถูกปิดใช้งาน
+function deleteRowByField_(tab, idField, idValue) {
+  var sh = ss_().getSheetByName(tab);
+  if (!sh) return false;
+  var values = sh.getDataRange().getValues();
+  if (values.length === 0) return false;
+  var idCol = values[0].indexOf(idField);
+  if (idCol === -1) return false;
+  for (var i = 1; i < values.length; i++) {
+    if (values[i][idCol] === idValue) {
+      sh.deleteRow(i + 1);
+      invalidateTableCache_(tab);
+      return true;
+    }
+  }
+  return false;
+}
+
 function patchById_(tab, idField, idValue, patch) {
   var existing = getById_(tab, idField, idValue);
   if (!existing) throw HttpError_('NOT_FOUND', 'ไม่พบข้อมูล ' + idField + '=' + idValue + ' ในชีต ' + tab);
@@ -280,5 +302,25 @@ function initSheets_() {
   });
 
   var seededSurveyQID = seedMonthlySurveyIfMissing_();
-  return { created: created, seeded: seeded, seededLists: seededLists, seededSurveyQID: seededSurveyQID };
+  var migratedAdmins = migrateStaffAdminsToAdminsSheet_();
+  return { created: created, seeded: seeded, seededLists: seededLists, seededSurveyQID: seededSurveyQID, migratedAdmins: migratedAdmins };
+}
+
+// ย้ายแถวที่เหลืออยู่ในชีต Staff ที่มี Role='Admin' (จากโครงสร้างเดิมก่อนแยกชีต Admins ออกมาต่างหาก) ไปไว้ที่ชีต
+// Admins แล้วลบออกจาก Staff — รันอัตโนมัติทุกครั้งที่ initSheets_ ทำงาน (ไม่ต้องรอกดปุ่มแยก) ทำครั้งเดียวจบเพราะ
+// หลังย้ายแล้วจะไม่มีแถว Role='Admin' เหลือใน Staff ให้ย้ายซ้ำอีก
+function migrateStaffAdminsToAdminsSheet_() {
+  var now = new Date().toISOString();
+  var staffAdmins = getAll_('Staff').filter(function (r) { return r.Role === 'Admin'; });
+  var migrated = [];
+  staffAdmins.forEach(function (r) {
+    if (getById_('Admins', 'EmployeeID', r.EmployeeID)) return; // มีบัญชี Admin นี้อยู่แล้ว ข้ามไป กันข้อมูลซ้ำ
+    appendRow_('Admins', {
+      EmployeeID: r.EmployeeID, ThaiName: r.ThaiName, NickName: r.NickName, Phone: r.Phone,
+      Active: r.Active || 'TRUE', Note: r.Note || '', CreatedAt: r.CreatedAt || now, UpdatedAt: now,
+    });
+    deleteRowByField_('Staff', 'EmployeeID', r.EmployeeID);
+    migrated.push(r.EmployeeID);
+  });
+  return migrated;
 }
