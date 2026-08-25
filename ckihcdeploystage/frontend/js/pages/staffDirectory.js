@@ -212,7 +212,6 @@ export function staffForm(staff, onSaved) {
           <div class="field"><label>Probationary Status</label><select id="f-ProbationaryStatus">${opts(listValues('ProbationaryStatus'), staff?.ProbationaryStatus || 'Active', '-- เลือก --')}</select></div>
           <div class="field"><label>Eval Date 60 วัน (คำนวณอัตโนมัติ)</label><input id="f-Eval60Date" value="${staff?.Eval60Date ? formatDateTH(staff.Eval60Date) : 'กรุณาเลือกวันที่เริ่มงานก่อน'}" disabled /></div>
           <div class="field"><label>Eval Date 119 วัน (คำนวณอัตโนมัติ)</label><input id="f-Eval119Date" value="${staff?.Eval119Date ? formatDateTH(staff.Eval119Date) : 'กรุณาเลือกวันที่เริ่มงานก่อน'}" disabled /></div>
-          <div class="field"><label>สิทธิ์การใช้งาน (Role)</label><select id="f-Role"><option value="User" ${staff?.Role !== 'Admin' ? 'selected' : ''}>Staff</option><option value="Admin" ${staff?.Role === 'Admin' ? 'selected' : ''}>Admin</option></select></div>
           <div class="field"><label>เบอร์มือถือ * (ใช้เข้าสู่ระบบ)</label><input type="tel" id="f-Phone" inputmode="numeric" value="${escapeHtml(staff?.Phone || '')}" required /></div>
           <div class="field"><label>ประเภทการลาออก (ถ้ามี)</label><select id="f-ResignationType">${opts(listValues('ResignationType'), staff?.ResignationType, '-- ไม่มี --')}</select></div>
           <div class="field"><label>วันที่ลาออก (ถ้ามี)</label><input type="date" id="f-ResignDate" value="${staff?.ResignDate || ''}" /></div>
@@ -253,7 +252,7 @@ export function staffForm(staff, onSaved) {
       CostCenterID: g('#f-CostCenterID'), CostCenterName: g('#f-CostCenterName'), JobFunction: g('#f-JobFunction'),
       SubServiceID: g('#f-SubServiceID'), Preceptor: g('#f-Preceptor'), ManagerName: g('#f-ManagerName'),
       Supervisor: g('#f-Supervisor'), FullPartTime: g('#f-FullPartTime'), ProbationaryStatus: g('#f-ProbationaryStatus'),
-      Role: g('#f-Role'), Phone: g('#f-Phone'), ResignationType: g('#f-ResignationType'), ResignDate: g('#f-ResignDate'),
+      Phone: g('#f-Phone'), ResignationType: g('#f-ResignationType'), ResignDate: g('#f-ResignDate'),
       Note: g('#f-Note'),
       Orient1Date: g('#f-Orient1Date'), Orient2Date: g('#f-Orient2Date'), Orient3Date: g('#f-Orient3Date'), Orient4Date: g('#f-Orient4Date'),
       OrientSentHRDate: g('#f-OrientSentHRDate'), ApplyLadderStatus: g('#f-ApplyLadderStatus'), UnitSpecificCompetency: g('#f-UnitSpecificCompetency'),

@@ -5,10 +5,12 @@
 function handleSetupInit_(ctx) {
   var staffRows = [];
   try { staffRows = getAll_('Staff'); } catch (e) { staffRows = []; }
-  if (staffRows.length > 0) {
+  var adminRows = [];
+  try { adminRows = getAll_('Admins'); } catch (e) { adminRows = []; }
+  if (staffRows.length > 0 || adminRows.length > 0) {
     var payload = verifySession_(ctx.token);
-    var staff = payload ? getById_('Staff', 'EmployeeID', payload.empId) : null;
-    if (!staff || staff.Role !== 'Admin' || String(staff.Active).toUpperCase() === 'FALSE') {
+    var admin = payload && payload.role === 'Admin' ? getById_('Admins', 'EmployeeID', payload.empId) : null;
+    if (!admin || String(admin.Active).toUpperCase() === 'FALSE') {
       throw HttpError_('UNAUTHORIZED', 'ระบบตั้งค่าเรียบร้อยแล้ว ต้องเป็นผู้ดูแลระบบเท่านั้นจึงจะรันซ้ำได้');
     }
   }
@@ -19,7 +21,9 @@ function handleSetupInit_(ctx) {
 function handleFirstAdmin_(ctx) {
   var staffRows = [];
   try { staffRows = getAll_('Staff'); } catch (e) { staffRows = []; }
-  if (staffRows.length > 0) {
+  var adminRows = [];
+  try { adminRows = getAll_('Admins'); } catch (e) { adminRows = []; }
+  if (staffRows.length > 0 || adminRows.length > 0) {
     throw HttpError_('CONFLICT', 'มีบัญชีผู้ใช้อยู่แล้ว ไม่สามารถสร้างผู้ดูแลระบบคนแรกซ้ำได้');
   }
   var employeeId = String(ctx.body.employeeId || '').trim();
@@ -29,22 +33,14 @@ function handleFirstAdmin_(ctx) {
     throw HttpError_('BAD_REQUEST', 'กรุณากรอก employeeId, phone, thaiName ให้ครบ');
   }
 
-  var hireDate = todayISO_();
   var now = new Date().toISOString();
-  var evalDates = computeEvalDates_(hireDate);
   var record = {
-    EmployeeID: employeeId, ThaiName: thaiName, NickName: String(ctx.body.nickName || '').trim(), HireDate: hireDate,
-    Position: ctx.body.position || 'ผู้ดูแลระบบ', CostCenterID: '', CostCenterName: '', JobFunction: '',
-    SubServiceID: '', Preceptor: '', ManagerName: '', Supervisor: '', FullPartTime: 'Full Time',
-    ProbationaryStatus: 'Passed', Eval60Date: evalDates.Eval60Date, Eval119Date: evalDates.Eval119Date,
-    Orient1Date: '', Orient2Date: '', Orient3Date: '', Orient4Date: '', OrientSentHRDate: '',
-    ApplyLadderStatus: 'NA', UnitSpecificCompetency: '', Role: 'Admin', Phone: phone,
-    Rehire: 'FALSE', ResignationType: '', ResignDate: '', Note: '',
-    Active: 'TRUE', CreatedAt: now, UpdatedAt: now,
+    EmployeeID: employeeId, ThaiName: thaiName, NickName: String(ctx.body.nickName || '').trim(),
+    Phone: phone, Active: 'TRUE', Note: '', CreatedAt: now, UpdatedAt: now,
   };
-  insertRow_('Staff', record);
+  insertRow_('Admins', record);
   var token = signSession_({ empId: employeeId, role: 'Admin', name: thaiName });
-  return ok_({ token: token, user: sanitizeStaff_(record) }, 'สร้างผู้ดูแลระบบคนแรกสำเร็จ');
+  return ok_({ token: token, user: sanitizeAdmin_(record) }, 'สร้างผู้ดูแลระบบคนแรกสำเร็จ');
 }
 
 // เปิด {exec_url}?path=/api/setup/status ตรง ๆ ในเบราว์เซอร์ได้เลย (ไม่ต้องล็อกอิน) เพื่อตรวจสอบว่า

@@ -19,7 +19,7 @@ var SHEET_ID = '1zBOpzSHNq9lZGr6XckZU_NSWhfUpWIk2vzFYClKxw2o';
 
 // เพิ่มเลขนี้ทุกครั้งที่ส่งโค้ด backend รอบใหม่ — ใช้เทียบกับค่าที่เห็นจริงตอนเปิด {exec_url}?path=/api/setup/status
 // เพื่อพิสูจน์ว่าโค้ดที่ deploy อยู่ตอนนี้เป็นเวอร์ชันล่าสุดจริงหรือไม่ (ไม่ต้องเดา)
-var BACKEND_CODE_VERSION_ = 'v27-2026-07-23-walkround-fixes';
+var BACKEND_CODE_VERSION_ = 'v28-2026-08-25-admins-sheet';
 
 function jsonOutput_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
@@ -59,6 +59,12 @@ function getRoutes_() {
     { method: 'POST', pattern: '/api/auth/login', handler: handleLogin_ },
     { method: 'GET', pattern: '/api/auth/me', handler: requireAuth_(handleMe_) },
     { method: 'POST', pattern: '/api/auth/logout', handler: requireAuth_(handleLogout_) },
+
+    // ---------- Admins (เก็บแยกจาก Staff เด็ดขาด — ดู Admins.gs) ----------
+    { method: 'GET', pattern: '/api/admins', handler: requireAdmin_(listAdmins_) },
+    { method: 'POST', pattern: '/api/admins', handler: requireAdmin_(createAdmin_) },
+    { method: 'PUT', pattern: '/api/admins/:id', handler: requireAdmin_(updateAdmin_) },
+    { method: 'DELETE', pattern: '/api/admins/:id', handler: requireAdmin_(revokeAdmin_) },
 
     // ---------- Staff ----------
     { method: 'GET', pattern: '/api/staff', handler: requireAdmin_(listStaff_) },

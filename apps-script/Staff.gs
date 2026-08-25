@@ -129,7 +129,9 @@ function buildStaffRecord_(body, existing) {
     OrientSentHRDate: body.OrientSentHRDate !== undefined ? normalizeDateInput_(body.OrientSentHRDate) : base.OrientSentHRDate || '',
     ApplyLadderStatus: body.ApplyLadderStatus !== undefined ? body.ApplyLadderStatus : base.ApplyLadderStatus || 'NA',
     UnitSpecificCompetency: body.UnitSpecificCompetency !== undefined ? body.UnitSpecificCompetency : base.UnitSpecificCompetency || '',
-    Role: body.Role === 'Admin' ? 'Admin' : (base.Role === 'Admin' && body.Role === undefined ? 'Admin' : 'User'),
+    // ให้/ถอดสิทธิ์ Admin ทำผ่านหน้า Settings > Admin เท่านั้น (ย้ายข้อมูลไปคนละชีต — ดู Admins.gs) ไม่ใช่ฟิลด์นี้
+    // อีกต่อไป แถวในชีต Staff จึงเป็น 'User' เสมอ
+    Role: 'User',
     Phone: body.Phone !== undefined ? body.Phone : base.Phone || '',
     Rehire: body.Rehire !== undefined ? String(body.Rehire) : base.Rehire || 'FALSE',
     ResignationType: body.ResignationType !== undefined ? body.ResignationType : base.ResignationType || '',
@@ -139,14 +141,20 @@ function buildStaffRecord_(body, existing) {
   return record;
 }
 
-/** หาพนักงานจากเบอร์มือถือ (ใช้ตรวจว่าเบอร์ซ้ำก่อนบันทึก เพราะเบอร์คือรหัสผ่านเข้าสู่ระบบ) */
+/** หาบัญชีจากเบอร์มือถือ (ใช้ตรวจว่าเบอร์ซ้ำก่อนบันทึก เพราะเบอร์คือรหัสผ่านเข้าสู่ระบบ) — เช็คทั้งชีต Staff และ
+ *  Admins เพราะทั้งสองชีตแยกกันเด็ดขาดแต่ใช้เบอร์มือถือเป็น credential เข้าสู่ระบบร่วมกัน ห้ามซ้ำข้ามชีต */
 function findByPhone_(phone, excludeEmployeeId) {
   var target = normalizePhone_(phone);
   if (!target) return null;
-  var rows = getAll_('Staff');
-  for (var i = 0; i < rows.length; i++) {
-    if (rows[i].EmployeeID === excludeEmployeeId) continue;
-    if (normalizePhone_(rows[i].Phone) === target) return rows[i];
+  var staffRows = getAll_('Staff');
+  for (var i = 0; i < staffRows.length; i++) {
+    if (staffRows[i].EmployeeID === excludeEmployeeId) continue;
+    if (normalizePhone_(staffRows[i].Phone) === target) return staffRows[i];
+  }
+  var adminRows = getAll_('Admins');
+  for (var j = 0; j < adminRows.length; j++) {
+    if (adminRows[j].EmployeeID === excludeEmployeeId) continue;
+    if (normalizePhone_(adminRows[j].Phone) === target) return adminRows[j];
   }
   return null;
 }
@@ -160,7 +168,7 @@ function createStaff_(ctx) {
   if (!employeeId || !thaiName || !hireDate || !phone) {
     throw HttpError_('BAD_REQUEST', 'กรุณากรอก Employee ID, ชื่อ-นามสกุล, วันที่เริ่มงาน, เบอร์มือถือ ให้ครบ');
   }
-  if (getById_('Staff', 'EmployeeID', employeeId)) {
+  if (getById_('Staff', 'EmployeeID', employeeId) || getById_('Admins', 'EmployeeID', employeeId)) {
     throw HttpError_('CONFLICT', 'มีรหัสพนักงานนี้อยู่แล้ว');
   }
   if (findByPhone_(phone, null)) {

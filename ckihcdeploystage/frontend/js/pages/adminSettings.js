@@ -4,7 +4,6 @@ import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { toastSuccess, toastError } from '../components/toast.js';
 import { withLoading } from '../components/loading.js';
 import { escapeHtml, exportCsv, parseCsv } from '../utils.js';
-import { staffForm } from './staffDirectory.js';
 
 const LIST_CATEGORIES = [
   { key: 'Position', label: 'รายการตำแหน่ง (Position)' },
@@ -220,10 +219,10 @@ export async function render(container) {
 
     <div class="tab-pane hidden" data-pane="admin">
       <div class="card">
-        <div class="toolbar"><h3 style="margin:0;">ผู้ดูแลระบบ (Admin)</h3><span class="spacer"></span><button id="add-user-btn" class="btn btn-primary btn-sm">+ เพิ่ม Admin</button></div>
-        <p style="color:var(--muted); font-size:13.5px; margin:-6px 0 12px;">รายชื่อบัญชีที่มีสิทธิ์ Admin ทั้งหมด — แยกจากรายการ Staff Directory (ซึ่งไม่แสดงบัญชี Admin ปนอยู่)</p>
+        <div class="toolbar"><h3 style="margin:0;">ผู้ดูแลระบบ (Admin)</h3><span class="spacer"></span><button id="add-admin-btn" class="btn btn-primary btn-sm">+ เพิ่ม Admin</button></div>
+        <p style="color:var(--muted); font-size:13.5px; margin:-6px 0 12px;">บันทึกแยกชีต (Admins) จากชีต Staff โดยเด็ดขาด — การให้สิทธิ์ Admin กับพนักงานที่มีอยู่แล้วจะย้ายข้อมูลตัวตนไปชีตนี้และลบออกจาก Staff Directory ทันที ไม่แสดงปนกันอีกต่อไป</p>
         <div class="table-wrap">
-          <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เบอร์มือถือ (ใช้เข้าสู่ระบบ)</th><th>จัดการ</th></tr></thead><tbody id="users-body"></tbody></table>
+          <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เบอร์มือถือ (ใช้เข้าสู่ระบบ)</th><th>จัดการ</th></tr></thead><tbody id="admins-body"></tbody></table>
         </div>
       </div>
     </div>`;
@@ -394,64 +393,134 @@ export async function render(container) {
     } catch (err) { toastError(err.message); }
   });
 
-  // ---------- Admin: รายชื่อบัญชีที่มีสิทธิ์ Admin เท่านั้น (แยกจากรายการ Staff Directory ทั่วไป) ----------
-  async function loadUsers() {
-    const staffList = (await api.get('/api/staff?includeAdmin=true')).filter((u) => u.Role === 'Admin');
-    const usersBody = document.getElementById('users-body');
-    if (!usersBody) return; // ผู้ใช้เปลี่ยนหน้าไปแล้วระหว่างรอโหลด
-    usersBody.innerHTML = staffList.map((u) => `
+  // ---------- Admin: บันทึกแยกชีต (Admins) จากชีต Staff โดยเด็ดขาด — ดู Admins.gs ฝั่ง backend ----------
+  function editAdminModal(admin, onSaved) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <form id="admin-edit-form">
+        <div class="form-grid">
+          <div class="field"><label>Employee ID</label><input value="${escapeHtml(admin.EmployeeID)}" disabled /></div>
+          <div class="field"><label>ชื่อ-นามสกุล *</label><input id="ae-ThaiName" value="${escapeHtml(admin.ThaiName || '')}" required /></div>
+          <div class="field"><label>ชื่อเล่น</label><input id="ae-NickName" value="${escapeHtml(admin.NickName || '')}" /></div>
+          <div class="field"><label>เบอร์มือถือ * (ใช้เข้าสู่ระบบ)</label><input type="tel" id="ae-Phone" inputmode="numeric" value="${escapeHtml(admin.Phone || '')}" required /></div>
+          <div class="field field-full"><label>Note</label><textarea id="ae-Note" rows="2">${escapeHtml(admin.Note || '')}</textarea></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="ae-cancel">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>`;
+    const body = openModal(`แก้ไขข้อมูล Admin — ${admin.EmployeeID}`, wrap);
+    body.querySelector('#ae-cancel').addEventListener('click', closeModal);
+    body.querySelector('#admin-edit-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const patch = {
+        ThaiName: body.querySelector('#ae-ThaiName').value.trim(),
+        NickName: body.querySelector('#ae-NickName').value.trim(),
+        Phone: body.querySelector('#ae-Phone').value.trim(),
+        Note: body.querySelector('#ae-Note').value.trim(),
+      };
+      try {
+        await withLoading(() => api.put(`/api/admins/${admin.EmployeeID}`, patch));
+        toastSuccess('บันทึกข้อมูล Admin สำเร็จ');
+        closeModal();
+        onSaved();
+      } catch (err) { toastError(err.message); }
+    });
+  }
+
+  async function loadAdmins() {
+    const admins = await api.get('/api/admins');
+    const adminsBody = document.getElementById('admins-body');
+    if (!adminsBody) return; // ผู้ใช้เปลี่ยนหน้าไปแล้วระหว่างรอโหลด
+    adminsBody.innerHTML = admins.map((a) => `
       <tr>
-        <td>${escapeHtml(u.EmployeeID)}</td><td>${escapeHtml(u.ThaiName)}</td><td>${escapeHtml(u.Phone || '—')}</td>
+        <td>${escapeHtml(a.EmployeeID)}</td><td>${escapeHtml(a.ThaiName)}</td><td>${escapeHtml(a.Phone || '—')}</td>
         <td class="row-actions">
-          <button class="btn btn-ghost btn-sm" data-edit-user="${u.EmployeeID}">แก้ไข</button>
-          <button class="btn btn-danger btn-sm" data-revoke="${u.EmployeeID}">ลบสิทธิ์ Admin</button>
+          <button class="btn btn-ghost btn-sm" data-edit-admin="${a.EmployeeID}">แก้ไข</button>
+          <button class="btn btn-danger btn-sm" data-revoke="${a.EmployeeID}">ลบสิทธิ์ Admin</button>
         </td>
       </tr>`).join('') || '<tr><td colspan="4" class="empty-state">ยังไม่มีผู้ดูแลระบบ</td></tr>';
 
-    document.querySelectorAll('[data-edit-user]').forEach((btn) => btn.addEventListener('click', async () => {
-      const staff = staffList.find((x) => x.EmployeeID === btn.dataset.editUser);
-      staffForm(staff, loadUsers);
+    document.querySelectorAll('[data-edit-admin]').forEach((btn) => btn.addEventListener('click', () => {
+      editAdminModal(admins.find((x) => x.EmployeeID === btn.dataset.editAdmin), loadAdmins);
     }));
     document.querySelectorAll('[data-revoke]').forEach((btn) => btn.addEventListener('click', async () => {
-      if (!(await confirmDialog(`ต้องการลบสิทธิ์ Admin ของ ${btn.dataset.revoke} หรือไม่? (จะกลับเป็น Staff)`))) return;
+      if (!(await confirmDialog(`ต้องการลบสิทธิ์ Admin ของ ${btn.dataset.revoke} หรือไม่? ระบบจะไม่สร้างข้อมูลพนักงานกลับให้อัตโนมัติ — ถ้าต้องการให้กลับมาเป็นพนักงาน ต้องเพิ่มข้อมูลใหม่ที่ Staff Directory`))) return;
       try {
-        await withLoading(() => api.put(`/api/staff/${btn.dataset.revoke}`, { Role: 'User' }));
+        await withLoading(() => api.del(`/api/admins/${btn.dataset.revoke}`));
         toastSuccess('ลบสิทธิ์ Admin สำเร็จ');
-        loadUsers();
+        loadAdmins();
       } catch (err) { toastError(err.message); }
     }));
   }
 
-  document.getElementById('add-user-btn').addEventListener('click', async () => {
-    const allStaff = await api.get('/api/staff');
+  document.getElementById('add-admin-btn').addEventListener('click', async () => {
+    const nonAdminStaff = await api.get('/api/staff');
     const wrap = document.createElement('div');
     wrap.innerHTML = `
+      <div class="tabs" id="ga-tabs">
+        <button type="button" class="tab-btn active" data-tab="existing">จากพนักงานที่มีอยู่แล้ว</button>
+        <button type="button" class="tab-btn" data-tab="new">สร้างใหม่ (ไม่ผูกกับพนักงานในระบบ)</button>
+      </div>
       <form id="grant-form">
-        <div class="field"><label>เลือกพนักงานที่จะให้สิทธิ์ Admin</label>
-          <select id="grant-emp" required>
-            <option value="">-- เลือกพนักงาน --</option>
-            ${allStaff.map((s2) => `<option value="${s2.EmployeeID}">${escapeHtml(s2.EmployeeID)} — ${escapeHtml(s2.ThaiName)}</option>`).join('')}
-          </select>
+        <div class="tab-pane" data-pane="existing">
+          <p style="color:var(--muted); font-size:13.5px; margin:4px 0 12px;">ข้อมูลพนักงานที่เลือกจะถูกย้ายไปชีต Admin และ<b>ลบออกจาก Staff Directory ทันที</b> (ประวัติทดลองงาน/ปฐมนิเทศเดิมจะไม่แสดงอีกต่อไป)</p>
+          <div class="field"><label>เลือกพนักงานที่จะให้สิทธิ์ Admin</label>
+            <select id="grant-emp">
+              <option value="">-- เลือกพนักงาน --</option>
+              ${nonAdminStaff.map((s2) => `<option value="${s2.EmployeeID}">${escapeHtml(s2.EmployeeID)} — ${escapeHtml(s2.ThaiName)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="tab-pane hidden" data-pane="new">
+          <div class="form-grid">
+            <div class="field"><label>Employee ID *</label><input id="ga-EmployeeID" /></div>
+            <div class="field"><label>ชื่อ-นามสกุล *</label><input id="ga-ThaiName" /></div>
+            <div class="field"><label>ชื่อเล่น</label><input id="ga-NickName" /></div>
+            <div class="field"><label>เบอร์มือถือ * (ใช้เข้าสู่ระบบ)</label><input type="tel" id="ga-Phone" inputmode="numeric" /></div>
+            <div class="field field-full"><label>Note</label><textarea id="ga-Note" rows="2"></textarea></div>
+          </div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="grant-cancel">ยกเลิก</button>
           <button type="submit" class="btn btn-primary">ให้สิทธิ์ Admin</button>
         </div>
       </form>`;
-    const body = openModal('เพิ่มรายชื่อผู้ดูแลระบบ', wrap);
+    const body = openModal('เพิ่มรายชื่อผู้ดูแลระบบ', wrap, { wide: true });
+    let activeGrantTab = 'existing';
+    body.querySelectorAll('#ga-tabs .tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        body.querySelectorAll('#ga-tabs .tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
+        body.querySelectorAll('.tab-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== btn.dataset.tab));
+        activeGrantTab = btn.dataset.tab;
+      });
+    });
     body.querySelector('#grant-cancel').addEventListener('click', closeModal);
     body.querySelector('#grant-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const empId = body.querySelector('#grant-emp').value;
-      if (!empId) return;
       try {
-        await withLoading(() => api.put(`/api/staff/${empId}`, { Role: 'Admin' }));
+        if (activeGrantTab === 'existing') {
+          const empId = body.querySelector('#grant-emp').value;
+          if (!empId) { toastError('กรุณาเลือกพนักงาน'); return; }
+          await withLoading(() => api.post('/api/admins', { fromEmployeeId: empId }));
+        } else {
+          const payload = {
+            EmployeeID: body.querySelector('#ga-EmployeeID').value.trim(),
+            ThaiName: body.querySelector('#ga-ThaiName').value.trim(),
+            NickName: body.querySelector('#ga-NickName').value.trim(),
+            Phone: body.querySelector('#ga-Phone').value.trim(),
+            Note: body.querySelector('#ga-Note').value.trim(),
+          };
+          if (!payload.EmployeeID || !payload.ThaiName || !payload.Phone) { toastError('กรุณากรอก Employee ID, ชื่อ-นามสกุล, เบอร์มือถือ ให้ครบ'); return; }
+          await withLoading(() => api.post('/api/admins', payload));
+        }
         toastSuccess('ให้สิทธิ์ Admin สำเร็จ');
         closeModal();
-        loadUsers();
+        loadAdmins();
       } catch (err) { toastError(err.message); }
     });
   });
 
-  await Promise.all([refreshOrg(), loadUsers()]);
+  await Promise.all([refreshOrg(), loadAdmins()]);
 }
