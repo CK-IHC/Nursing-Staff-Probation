@@ -63,11 +63,22 @@ async function doGet(path) {
   try {
     res = await fetch(`${state.apiBase}?${params.toString()}`, { method: 'GET' });
   } catch {
-    const err = new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือ API URL');
-    err.code = 'NETWORK_ERROR';
-    throw err;
+    throw networkError_();
   }
   return handleResponse(res, hadToken);
+}
+
+// เกิดเมื่อ fetch() ล้มเหลวระดับ network (DNS/CORS/timeout) — ไม่ใช่ error จาก backend เอง เช่น
+// deployment ของ Google Apps Script ถูกลบ/URL เก่า หรือ "Who has access" ไม่ได้ตั้งเป็น Anyone
+// (กรณีนี้ browser จะถูก redirect ไปหน้า login ของ Google แล้ว fetch เห็นเป็น network error)
+// ดูวิธีไล่เช็คทีละขั้นได้ที่ docs/DEPLOY.md หัวข้อ "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ"
+function networkError_() {
+  const err = new Error(
+    'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือ API URL ' +
+    '(ดูวิธีแก้ได้ที่ docs/DEPLOY.md หัวข้อ "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ")'
+  );
+  err.code = 'NETWORK_ERROR';
+  return err;
 }
 
 async function doMutate(method, path, body) {
@@ -81,9 +92,7 @@ async function doMutate(method, path, body) {
       body: JSON.stringify({ path: pure, method, token: state.token, body: body || {}, query }),
     });
   } catch {
-    const err = new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือ API URL');
-    err.code = 'NETWORK_ERROR';
-    throw err;
+    throw networkError_();
   }
   return handleResponse(res, hadToken);
 }
