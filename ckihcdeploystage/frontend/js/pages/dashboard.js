@@ -122,7 +122,7 @@ export async function render(container) {
     </div>
     <div class="card" style="margin-bottom:16px;">
       <h3>Apply Ladder Status — ยังไม่ดำเนินการ (เดือนที่ 5, 8, 10)</h3>
-      <div class="table-wrap">
+      <div class="table-wrap table-wrap-compact">
         <table class="data-table">
           <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th><th></th></tr></thead>
           <tbody>${ladderRowsHtml(ladderDue, true)}</tbody>
@@ -131,7 +131,7 @@ export async function render(container) {
     </div>
     <div class="card">
       <h3>Orientation Checklist — ยังไม่ส่ง HR (เดือนที่ 5-11)</h3>
-      <div class="table-wrap">
+      <div class="table-wrap table-wrap-compact">
         <table class="data-table">
           <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>เช็คเดือนที่ 1</th><th>เช็คเดือนที่ 2</th><th>เช็คเดือนที่ 3</th><th>เช็คเดือนที่ 4</th><th>สถานะส่ง HR</th><th></th></tr></thead>
           <tbody>${hrSendRowsHtml(hrSendDue, true)}</tbody>

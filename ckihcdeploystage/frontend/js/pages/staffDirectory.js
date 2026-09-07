@@ -473,7 +473,7 @@ export async function render(container) {
       box.innerHTML = reminders.ladderDue?.length ? `
         <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องดำเนินการ Apply Ladder Status (เดือนที่ 5, 8, 10) — ${reminders.ladderDue.length} รายการ</div>
         <div class="card" style="margin-bottom:14px;">
-          <div class="table-wrap">
+          <div class="table-wrap table-wrap-compact">
             <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th><th></th></tr></thead>
             <tbody>${reminders.ladderDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td><td><button class="btn btn-ghost btn-sm" data-edit-ladder="${escapeHtml(r.EmployeeID)}">Edit</button></td></tr>`).join('')}</tbody></table>
           </div>

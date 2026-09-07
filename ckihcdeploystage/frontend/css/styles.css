@@ -138,6 +138,10 @@ input, select, textarea{ font-family:inherit; font-size:15px; }
 .topbar h2{ font-family:"Trirong",serif; color:var(--teal-900); font-size:18px; margin:0; flex:1; }
 .icon-btn{ background:none; border:none; font-size:20px; color:var(--teal-900); display:none; }
 .icon-btn svg{ width:22px; height:22px; display:block; }
+/* ต่างจาก .icon-btn (ซ่อนไว้บนจอกว้าง เพราะเป็นปุ่มเปิดเมนูมือถือ) — ปุ่มนี้ต้องเห็นได้เสมอทุกขนาดจอ/ทุก role */
+.topbar-icon-btn{ background:none; border:none; padding:6px; border-radius:8px; color:var(--teal-900); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.topbar-icon-btn svg{ width:20px; height:20px; display:block; }
+.topbar-icon-btn:hover{ background:var(--line-soft); }
 .topbar-user{ display:flex; align-items:center; gap:10px; font-size:14.5px; }
 .role-chip{ background:var(--teal-100); color:var(--teal-700); padding:3px 10px; border-radius:999px; font-size:12.5px; font-weight:600; }
 /* ทิศทางกระดาษเวลาพิมพ์รายงาน — เลือกไว้ล่วงหน้า มีผลกับทุกปุ่ม Print Report/Print Selection ในระบบ */
@@ -167,6 +171,9 @@ input, select, textarea{ font-family:inherit; font-size:15px; }
    ทำให้ "เลื่อน" กลายเป็นเลื่อนทั้งหน้าแทน) ตารางที่มีแถวน้อยกว่านี้ไม่ได้รับผลกระทบ เพราะ max-height ไม่บังคับความสูงขั้นต่ำ
    ปิดการจำกัดนี้ตอนพิมพ์ไว้แล้วที่ media print (.table-wrap{ overflow:visible !important; }) */
 .table-wrap{ overflow-x:auto; overflow-y:auto; max-height:640px; border:1px solid var(--line); border-radius:12px; }
+/* ตารางในกล่องแจ้งเตือน (Apply Ladder Status / Orientation Checklist HR-send) แสดงแค่ราว 5 แถวก่อนเลื่อน — สั้นกว่า
+   ตารางข้อมูลทั่วไปโดยตั้งใจ เพราะเป็นการ์ดสรุปเตือนความจำ ไม่ใช่ตารางไว้ไล่ดูข้อมูลทีละแถวแบบ Staff Directory */
+.table-wrap.table-wrap-compact{ max-height:270px; }
 table.data-table{ width:100%; border-collapse:collapse; font-size:14.5px; min-width:600px; }
 table.data-table th{
   text-align:left; background:var(--teal-100); color:var(--teal-900); font-weight:600;
