@@ -181,19 +181,23 @@ async function loadMeetingsTab(container, empId) {
     <tbody>${mine.map((m) => `<tr><td>${formatDateTH(m.Date)}</td><td>${escapeHtml(m.Title)}</td><td>${escapeHtml(m.Status)}</td></tr>`).join('')}</tbody></table>`;
 }
 
-export function staffForm(staff, onSaved) {
+// initialTab: แท็บที่เปิดขึ้นมาให้เห็นทันที — ใช้ตอนกด "แก้ไข" จากตารางแจ้งเตือน (Apply Ladder/Orientation Checklist
+// อยู่ในแท็บ "orientation") จะได้ไม่ต้องกดสลับแท็บเองก่อนเห็นฟิลด์ที่เกี่ยวข้อง ค่าเริ่มต้นยังเป็น 'general' เหมือนเดิม
+export function staffForm(staff, onSaved, initialTab = 'general') {
   const isEdit = !!staff;
+  const tabActive = (tab) => (tab === initialTab ? 'active' : '');
+  const paneHidden = (tab) => (tab === initialTab ? '' : 'hidden');
   const wrap = document.createElement('div');
   wrap.innerHTML = `
     <div class="tabs" id="sf-tabs">
-      <button type="button" class="tab-btn active" data-tab="general">ข้อมูลทั่วไป</button>
-      <button type="button" class="tab-btn" data-tab="orientation">Orientation</button>
-      ${isEdit ? '<button type="button" class="tab-btn" data-tab="eval">การประเมิน</button>' : ''}
-      ${isEdit ? '<button type="button" class="tab-btn" data-tab="consult">ประวัติคำปรึกษา</button>' : ''}
-      ${isEdit ? '<button type="button" class="tab-btn" data-tab="meetings">Meetings</button>' : ''}
+      <button type="button" class="tab-btn ${tabActive('general')}" data-tab="general">ข้อมูลทั่วไป</button>
+      <button type="button" class="tab-btn ${tabActive('orientation')}" data-tab="orientation">Orientation</button>
+      ${isEdit ? `<button type="button" class="tab-btn ${tabActive('eval')}" data-tab="eval">การประเมิน</button>` : ''}
+      ${isEdit ? `<button type="button" class="tab-btn ${tabActive('consult')}" data-tab="consult">ประวัติคำปรึกษา</button>` : ''}
+      ${isEdit ? `<button type="button" class="tab-btn ${tabActive('meetings')}" data-tab="meetings">Meetings</button>` : ''}
     </div>
     <form id="staff-form">
-      <div class="tab-pane" data-pane="general">
+      <div class="tab-pane ${paneHidden('general')}" data-pane="general">
         <div class="form-grid">
           <div class="field"><label>Employee ID *</label><input id="f-EmployeeID" value="${escapeHtml(staff?.EmployeeID || '')}" ${isEdit ? 'disabled' : ''} required /></div>
           <div class="field"><label>ชื่อ-นามสกุล *</label><input id="f-ThaiName" value="${escapeHtml(staff?.ThaiName || '')}" required /></div>
@@ -218,7 +222,7 @@ export function staffForm(staff, onSaved) {
           <div class="field field-full"><label>Note</label><textarea id="f-Note" rows="2">${escapeHtml(staff?.Note || '')}</textarea></div>
         </div>
       </div>
-      <div class="tab-pane hidden" data-pane="orientation">
+      <div class="tab-pane ${paneHidden('orientation')}" data-pane="orientation">
         <div class="form-grid">
           <div class="field"><label>Orientation เดือนที่ 1 (0-30 วัน)</label><input type="date" id="f-Orient1Date" value="${staff?.Orient1Date || ''}" /></div>
           <div class="field"><label>Orientation เดือนที่ 2 (31-60 วัน)</label><input type="date" id="f-Orient2Date" value="${staff?.Orient2Date || ''}" /></div>
@@ -229,9 +233,9 @@ export function staffForm(staff, onSaved) {
           <div class="field field-full"><label>Unit Specific Competency</label><textarea id="f-UnitSpecificCompetency" rows="2">${escapeHtml(staff?.UnitSpecificCompetency || '')}</textarea></div>
         </div>
       </div>
-      ${isEdit ? '<div class="tab-pane hidden" data-pane="eval"></div>' : ''}
-      ${isEdit ? '<div class="tab-pane hidden" data-pane="consult"></div>' : ''}
-      ${isEdit ? '<div class="tab-pane hidden" data-pane="meetings"></div>' : ''}
+      ${isEdit ? `<div class="tab-pane ${paneHidden('eval')}" data-pane="eval"></div>` : ''}
+      ${isEdit ? `<div class="tab-pane ${paneHidden('consult')}" data-pane="consult"></div>` : ''}
+      ${isEdit ? `<div class="tab-pane ${paneHidden('meetings')}" data-pane="meetings"></div>` : ''}
       <div class="modal-actions">
         ${isEdit ? '<button type="button" class="btn btn-secondary" id="staff-print" style="margin-right:auto;">Print รายละเอียดพนักงาน</button>' : ''}
         <button type="button" class="btn btn-ghost" id="staff-cancel">ยกเลิก</button>
@@ -461,18 +465,29 @@ export async function render(container) {
     renderTable();
   }
 
-  api.get('/api/dashboard/reminders').then((reminders) => {
+  async function loadLadderReminders() {
     const box = document.getElementById('directory-alerts');
     if (!box) return;
-    box.innerHTML = reminders.ladderDue?.length ? `
-      <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องดำเนินการ Apply Ladder Status (เดือนที่ 5, 8, 10) — ${reminders.ladderDue.length} รายการ</div>
-      <div class="card" style="margin-bottom:14px;">
-        <div class="table-wrap">
-          <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th></tr></thead>
-          <tbody>${reminders.ladderDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td></tr>`).join('')}</tbody></table>
-        </div>
-      </div>` : '';
-  }).catch(() => {});
+    try {
+      const reminders = await api.get('/api/dashboard/reminders');
+      box.innerHTML = reminders.ladderDue?.length ? `
+        <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องดำเนินการ Apply Ladder Status (เดือนที่ 5, 8, 10) — ${reminders.ladderDue.length} รายการ</div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="table-wrap">
+            <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th><th></th></tr></thead>
+            <tbody>${reminders.ladderDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td><td><button class="btn btn-ghost btn-sm" data-edit-ladder="${escapeHtml(r.EmployeeID)}">Edit</button></td></tr>`).join('')}</tbody></table>
+          </div>
+        </div>` : '';
+      box.querySelectorAll('[data-edit-ladder]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const staff = allStaff.find((x) => x.EmployeeID === btn.dataset.editLadder);
+          if (!staff) return;
+          staffForm(staff, async () => { await reload(); await loadLadderReminders(); }, 'orientation');
+        });
+      });
+    } catch { /* แจ้งเตือนเป็นข้อมูลเสริม โหลดไม่สำเร็จไม่ควรทำให้หน้าหลักใช้งานไม่ได้ */ }
+  }
+  loadLadderReminders();
 
   document.querySelectorAll('#directory-tabs .tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
