@@ -162,11 +162,15 @@ input, select, textarea{ font-family:inherit; font-size:15px; }
 .section-title{ font-family:"Trirong",serif; color:var(--teal-900); font-size:16px; margin:22px 0 10px; padding-left:10px; border-left:3px solid var(--gold); }
 
 /* ============================ Tables ============================ */
-.table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; }
+/* max-height ทำให้ .table-wrap เป็น scroll container ของตัวเอง (แสดงได้ราว 5 แถวก่อนต้องเลื่อน) — ถ้าไม่ตั้งค่านี้
+   position:sticky บนหัวตารางด้านล่างจะไม่มีผลอะไรเลย เพราะไม่มี overflow ให้ sticky อิงกับมัน (กล่องเดิมสูงเท่าเนื้อหาเสมอ
+   ทำให้ "เลื่อน" กลายเป็นเลื่อนทั้งหน้าแทน) ตารางที่มีแถวน้อยกว่านี้ไม่ได้รับผลกระทบ เพราะ max-height ไม่บังคับความสูงขั้นต่ำ
+   ปิดการจำกัดนี้ตอนพิมพ์ไว้แล้วที่ media print (.table-wrap{ overflow:visible !important; }) */
+.table-wrap{ overflow-x:auto; overflow-y:auto; max-height:270px; border:1px solid var(--line); border-radius:12px; }
 table.data-table{ width:100%; border-collapse:collapse; font-size:14.5px; min-width:600px; }
 table.data-table th{
   text-align:left; background:var(--teal-100); color:var(--teal-900); font-weight:600;
-  padding:10px 12px; white-space:nowrap; position:sticky; top:0;
+  padding:10px 12px; white-space:nowrap; position:sticky; top:0; z-index:1;
 }
 table.data-table td{ padding:9px 12px; border-top:1px solid var(--line-soft); }
 table.data-table tbody tr:hover{ background:var(--line-soft); }
@@ -473,7 +477,7 @@ table.vertical-fields td{ vertical-align:top; }
   body, .card, p, li, td, .empty-state{ font-size:11px !important; }
   .card{ border:none !important; border-radius:0 !important; padding:0 0 4px !important; break-inside:avoid; }
   .section-title{ border-left:none !important; border-bottom:1px solid #000 !important; padding:0 0 4px !important; color:#000 !important; font-size:12px !important; }
-  .table-wrap{ overflow:visible !important; border:none !important; }
+  .table-wrap{ overflow:visible !important; max-height:none !important; border:none !important; }
   /* border-collapse:separate (ไม่ใช่ collapse) — Chrome มี bug ที่ thead ของตารางไม่ขึ้นซ้ำในหน้าถัดไปตอนพิมพ์ถ้าใช้ collapse
      border-spacing:0 ทำให้เส้นตารางยังดูติดกันเหมือนเดิมทุกอย่างเหมือน collapse แค่แก้ปัญหา thead ไม่ขึ้นซ้ำ */
   table.data-table{ min-width:0 !important; width:100% !important; table-layout:auto; font-size:11px !important; border-collapse:separate !important; border-spacing:0 !important; }

@@ -114,7 +114,14 @@ export async function render(container) {
   const alerts = [];
   if (summary.overdueOneYear) alerts.push(`<div class="alert-banner">เกินกำหนด (&gt;1ปี) ยังไม่ส่ง HR: ${summary.overdueOneYear} คน</div>`);
   if (reminders.hrSendDue?.length) {
-    alerts.push(`<div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องส่ง Orientation Checklist ให้ HR (เดือนที่ 5-11) — ${escapeHtml(reminders.hrSendDue.map((r) => `${r.ThaiName} (ด.${r.Month})`).join(', '))}</div>`);
+    alerts.push(`
+      <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องส่ง Orientation Checklist ให้ HR (เดือนที่ 5-11) — ${reminders.hrSendDue.length} รายการ</div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="table-wrap">
+          <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th></tr></thead>
+          <tbody>${reminders.hrSendDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td></tr>`).join('')}</tbody></table>
+        </div>
+      </div>`);
   }
   document.getElementById('or-alerts').innerHTML = alerts.join('');
 

@@ -21,8 +21,10 @@ function computeEvalDates_(hireDate) {
   return { Eval60Date: addDays_(hireDate, 60), Eval119Date: addDays_(hireDate, 119) };
 }
 
-// แปลงวันที่ที่พิมพ์มาในรูปแบบ dd/mm/yyyy (หรือรูปแบบอื่นที่พบบ่อยเวลาผู้ใช้แก้ไฟล์ CSV ด้วย Excel) ให้เป็น yyyy-mm-dd
-// ก่อนบันทึก/คำนวณ — ถ้าเป็น yyyy-mm-dd อยู่แล้วคืนค่าเดิม ถ้าแปลงไม่ได้คืนค่าเดิมไว้ (กัน exception พังทั้งแถวตอนนำเข้า)
+// แปลงวันที่ที่พิมพ์มาในรูปแบบต่าง ๆ ที่พบบ่อยเวลานำเข้าไฟล์ CSV/Excel (dd/mm/yyyy, dd/mm/yy, หรือเลข serial
+// date ล้วนที่หลุดออกมาตอน export เซลล์วันที่ที่ไม่ได้ format เป็นข้อความ) ให้เป็น yyyy-mm-dd ก่อนบันทึก/คำนวณเสมอ
+// เพื่อให้ไฟล์ที่ผู้ใช้ import เข้ามาไม่ต้องปรับ format ให้ตรงกับฟิลด์ "วันที่เริ่มงาน" เองก่อนทุกครั้ง
+// ถ้าเป็น yyyy-mm-dd อยู่แล้วคืนค่าเดิม ถ้าแปลงไม่ได้คืนค่าเดิมไว้ (กัน exception พังทั้งแถวตอนนำเข้า)
 function normalizeDateInput_(value) {
   var s = String(value || '').trim();
   if (!s) return '';
@@ -30,8 +32,22 @@ function normalizeDateInput_(value) {
     var parts = s.split('-');
     return parts[0] + '-' + parts[1].padStart(2, '0') + '-' + parts[2].padStart(2, '0');
   }
-  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (m) return m[3] + '-' + m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0');
+  // dd/mm/yyyy ตามความตั้งใจเดิม — กลุ่มที่ 1 คือวัน กลุ่มที่ 2 คือเดือน (ของเดิมสลับตำแหน่งกันตอนประกอบกลับเป็น
+  // yyyy-mm-dd ทำให้ "16/1/2026" กลายเป็น "2026-16-01" ซึ่งเป็นวันที่ไม่มีจริง แก้ให้ประกอบถูกลำดับ)
+  var m4 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m4) return m4[3] + '-' + m4[2].padStart(2, '0') + '-' + m4[1].padStart(2, '0');
+  // ปีย่อ 2 หลัก เช่น 16/1/26 — ตีความเป็น ค.ศ. 20xx เสมอ (พอเหมาะกับข้อมูลพนักงานปัจจุบัน/อนาคตอันใกล้)
+  var m2 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+  if (m2) return '20' + m2[3] + '-' + m2[2].padStart(2, '0') + '-' + m2[1].padStart(2, '0');
+  // Excel serial date (เซลล์วันที่ในไฟล์ต้นทางไม่ได้ format เป็นข้อความ พอ export เป็น CSV จึงหลุดมาเป็นเลขล้วน)
+  // ใช้วันฐานเดียวกับที่ Google Sheets ใช้ (30 ธ.ค. 1899) ให้ตรงกับที่ cellToString_ ใน Data.gs ตีความตอนอ่านจากชีต
+  if (/^\d{4,5}$/.test(s)) {
+    var serial = Number(s);
+    if (serial > 20000 && serial < 60000) {
+      var d = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+      return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd');
+    }
+  }
   return s;
 }
 
