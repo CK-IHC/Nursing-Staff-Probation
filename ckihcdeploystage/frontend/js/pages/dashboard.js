@@ -1,5 +1,8 @@
 import { api } from '../api.js';
 import { escapeHtml, exportCsv, printReport, printIsolated } from '../utils.js';
+import { staffForm } from './staffDirectory.js';
+import { withLoading } from '../components/loading.js';
+import { toastError } from '../components/toast.js';
 
 function daysBetween(a, b) {
   return Math.round((new Date(b) - new Date(a)) / 86400000);
@@ -38,13 +41,14 @@ function monthBadge(status) {
   return status === 'เสร็จสิ้น' ? 'badge-green' : 'badge-gray';
 }
 
-function ladderRowsHtml(rows) {
-  return rows.length === 0 ? '<tr><td colspan="4" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>' : rows.map((r) => `
-    <tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td></tr>`).join('');
+// withActions: false สำหรับตอนพิมพ์ (printIsolated) — หน้าพิมพ์ไม่ต้องมีปุ่ม Edit
+function ladderRowsHtml(rows, withActions) {
+  return rows.length === 0 ? `<tr><td colspan="${withActions ? 5 : 4}" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>` : rows.map((r) => `
+    <tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td>${withActions ? `<td><button class="btn btn-ghost btn-sm" data-edit-ladder="${escapeHtml(r.EmployeeID)}">Edit</button></td>` : ''}</tr>`).join('');
 }
 
-function hrSendRowsHtml(rows) {
-  return rows.length === 0 ? '<tr><td colspan="8" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>' : rows.map((r) => {
+function hrSendRowsHtml(rows, withActions) {
+  return rows.length === 0 ? `<tr><td colspan="${withActions ? 9 : 8}" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>` : rows.map((r) => {
     const m1 = monthStatus(r.Orient1Date), m2 = monthStatus(r.Orient2Date), m3 = monthStatus(r.Orient3Date), m4 = monthStatus(r.Orient4Date);
     const hr = r.OrientSentHRDate ? 'ส่งแล้ว' : 'รอส่ง';
     return `<tr>
@@ -54,6 +58,7 @@ function hrSendRowsHtml(rows) {
       <td><span class="badge ${monthBadge(m3)}">${m3}</span></td>
       <td><span class="badge ${monthBadge(m4)}">${m4}</span></td>
       <td><span class="badge ${hr === 'ส่งแล้ว' ? 'badge-green' : 'badge-red'}">${hr}</span></td>
+      ${withActions ? `<td><button class="btn btn-ghost btn-sm" data-edit-hrsend="${escapeHtml(r.EmployeeID)}">Edit</button></td>` : ''}
     </tr>`;
   }).join('');
 }
@@ -119,8 +124,8 @@ export async function render(container) {
       <h3>Apply Ladder Status — ยังไม่ดำเนินการ (เดือนที่ 5, 8, 10)</h3>
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th></tr></thead>
-          <tbody>${ladderRowsHtml(ladderDue)}</tbody>
+          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th><th></th></tr></thead>
+          <tbody>${ladderRowsHtml(ladderDue, true)}</tbody>
         </table>
       </div>
     </div>
@@ -128,8 +133,8 @@ export async function render(container) {
       <h3>Orientation Checklist — ยังไม่ส่ง HR (เดือนที่ 5-11)</h3>
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>เช็คเดือนที่ 1</th><th>เช็คเดือนที่ 2</th><th>เช็คเดือนที่ 3</th><th>เช็คเดือนที่ 4</th><th>สถานะส่ง HR</th></tr></thead>
-          <tbody>${hrSendRowsHtml(hrSendDue)}</tbody>
+          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>เช็คเดือนที่ 1</th><th>เช็คเดือนที่ 2</th><th>เช็คเดือนที่ 3</th><th>เช็คเดือนที่ 4</th><th>สถานะส่ง HR</th><th></th></tr></thead>
+          <tbody>${hrSendRowsHtml(hrSendDue, true)}</tbody>
         </table>
       </div>
     </div>`;
@@ -145,18 +150,29 @@ export async function render(container) {
     });
   });
 
+  async function editStaffFromReminder(employeeId) {
+    try {
+      const staff = await withLoading(() => api.get(`/api/staff/${employeeId}`));
+      staffForm(staff, () => render(container), 'orientation');
+    } catch (err) {
+      toastError(err.message);
+    }
+  }
+  document.querySelectorAll('[data-edit-ladder]').forEach((btn) => btn.addEventListener('click', () => editStaffFromReminder(btn.dataset.editLadder)));
+  document.querySelectorAll('[data-edit-hrsend]').forEach((btn) => btn.addEventListener('click', () => editStaffFromReminder(btn.dataset.editHrsend)));
+
   document.getElementById('dash-print').addEventListener('click', () => printReport('Dashboard Summary Report', `On Probation ${c.onProbation} · Passed ${c.passed} · Total Staff ${c.total}`));
   document.getElementById('dash-print-reminders').addEventListener('click', () => {
     const html = `
       <h3>Apply Ladder Status — ยังไม่ดำเนินการ (เดือนที่ 5, 8, 10)</h3>
       <div class="table-wrap"><table class="data-table">
         <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th></tr></thead>
-        <tbody>${ladderRowsHtml(ladderDue)}</tbody>
+        <tbody>${ladderRowsHtml(ladderDue, false)}</tbody>
       </table></div>
       <h3 style="margin-top:18px;">Orientation Checklist — ยังไม่ส่ง HR (เดือนที่ 5-11)</h3>
       <div class="table-wrap"><table class="data-table">
         <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>เช็คเดือนที่ 1</th><th>เช็คเดือนที่ 2</th><th>เช็คเดือนที่ 3</th><th>เช็คเดือนที่ 4</th><th>สถานะส่ง HR</th></tr></thead>
-        <tbody>${hrSendRowsHtml(hrSendDue)}</tbody>
+        <tbody>${hrSendRowsHtml(hrSendDue, false)}</tbody>
       </table></div>`;
     printIsolated('รายการแจ้งเตือน (On Probation)', '', html);
   });

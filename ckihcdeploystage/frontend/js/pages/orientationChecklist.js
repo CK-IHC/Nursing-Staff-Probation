@@ -111,19 +111,35 @@ export async function render(container) {
     <div class="stat-card stat-green"><span class="stat-label">ครบทุกเดือน</span><span class="stat-value">${summary.completedAllMonths}</span></div>
     <div class="stat-card stat-orange"><span class="stat-label">ส่ง HR แล้ว</span><span class="stat-value">${summary.sentToHR}</span></div>
     <div class="stat-card stat-red"><span class="stat-label">ยังไม่ส่ง HR</span><span class="stat-value">${summary.notSentToHR}</span></div>`;
-  const alerts = [];
-  if (summary.overdueOneYear) alerts.push(`<div class="alert-banner">เกินกำหนด (&gt;1ปี) ยังไม่ส่ง HR: ${summary.overdueOneYear} คน</div>`);
-  if (reminders.hrSendDue?.length) {
-    alerts.push(`
-      <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องส่ง Orientation Checklist ให้ HR (เดือนที่ 5-11) — ${reminders.hrSendDue.length} รายการ</div>
-      <div class="card" style="margin-bottom:14px;">
-        <div class="table-wrap">
-          <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th></tr></thead>
-          <tbody>${reminders.hrSendDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td></tr>`).join('')}</tbody></table>
-        </div>
-      </div>`);
+  function renderAlerts(hrSendDue) {
+    const box = document.getElementById('or-alerts');
+    if (!box) return;
+    const alerts = [];
+    if (summary.overdueOneYear) alerts.push(`<div class="alert-banner">เกินกำหนด (&gt;1ปี) ยังไม่ส่ง HR: ${summary.overdueOneYear} คน</div>`);
+    if (hrSendDue?.length) {
+      alerts.push(`
+        <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องส่ง Orientation Checklist ให้ HR (เดือนที่ 5-11) — ${hrSendDue.length} รายการ</div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="table-wrap">
+            <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th></th></tr></thead>
+            <tbody>${hrSendDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td><button class="btn btn-ghost btn-sm" data-edit-hrsend="${escapeHtml(r.EmployeeID)}">Edit</button></td></tr>`).join('')}</tbody></table>
+          </div>
+        </div>`);
+    }
+    box.innerHTML = alerts.join('');
+    box.querySelectorAll('[data-edit-hrsend]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const staff = hrSendDue.find((x) => x.EmployeeID === btn.dataset.editHrsend);
+        if (!staff) return;
+        editModal(staff, async () => {
+          await reload();
+          const fresh = await api.get('/api/dashboard/reminders');
+          renderAlerts(fresh.hrSendDue);
+        });
+      });
+    });
   }
-  document.getElementById('or-alerts').innerHTML = alerts.join('');
+  renderAlerts(reminders.hrSendDue);
 
   let allRows = [];
   const selectedIds = new Set();
