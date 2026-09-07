@@ -334,7 +334,7 @@ export async function render(container) {
       <button id="filter-reset" class="btn btn-ghost">Reset</button>
       <span class="spacer"></span>
       <button id="template-btn" class="btn btn-ghost">ดาวน์โหลด Template</button>
-      <label class="btn btn-ghost" style="cursor:pointer;">Import Excel<input type="file" id="import-file" accept=".csv" class="hidden" /></label>
+      <label class="btn btn-ghost" style="cursor:pointer;" title="วันที่เริ่มงานในไฟล์รับได้หลายรูปแบบ: yyyy-mm-dd, dd/mm/yyyy, dd/mm/yy หรือเซลล์วันที่ที่ Excel export เป็นตัวเลขล้วน ระบบแปลงให้อัตโนมัติ">Import Excel<input type="file" id="import-file" accept=".csv" class="hidden" /></label>
       <button id="export-btn" class="btn btn-secondary">Export Excel</button>
       <button id="print-tab-btn" class="btn btn-primary">Print</button>
       <button id="add-staff-btn" class="btn btn-primary">+ เพิ่มพนักงาน</button>
@@ -464,8 +464,14 @@ export async function render(container) {
   api.get('/api/dashboard/reminders').then((reminders) => {
     const box = document.getElementById('directory-alerts');
     if (!box) return;
-    box.innerHTML = reminders.ladderDue?.length
-      ? `<div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องดำเนินการ Apply Ladder Status (เดือนที่ 5, 8, 10) — ${escapeHtml(reminders.ladderDue.map((r) => `${r.ThaiName} (ด.${r.Month})`).join(', '))}</div>` : '';
+    box.innerHTML = reminders.ladderDue?.length ? `
+      <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องดำเนินการ Apply Ladder Status (เดือนที่ 5, 8, 10) — ${reminders.ladderDue.length} รายการ</div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="table-wrap">
+          <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th></tr></thead>
+          <tbody>${reminders.ladderDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td></tr>`).join('')}</tbody></table>
+        </div>
+      </div>` : '';
   }).catch(() => {});
 
   document.querySelectorAll('#directory-tabs .tab-btn').forEach((btn) => {
