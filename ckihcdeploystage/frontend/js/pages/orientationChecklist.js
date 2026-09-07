@@ -120,7 +120,7 @@ export async function render(container) {
       alerts.push(`
         <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องส่ง Orientation Checklist ให้ HR (เดือนที่ 5-11) — ${hrSendDue.length} รายการ</div>
         <div class="card" style="margin-bottom:14px;">
-          <div class="table-wrap">
+          <div class="table-wrap table-wrap-compact">
             <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th></th></tr></thead>
             <tbody>${hrSendDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td><button class="btn btn-ghost btn-sm" data-edit-hrsend="${escapeHtml(r.EmployeeID)}">Edit</button></td></tr>`).join('')}</tbody></table>
           </div>

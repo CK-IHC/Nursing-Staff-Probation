@@ -2,7 +2,7 @@ import { api, state, setSession, clearSession } from './api.js';
 import { loadReferenceData, cache } from './state.js';
 import { visibleRoutes, renderRoute, initRouter, BOTTOM_NAV_ROUTES } from './router.js';
 import { initSortableTables } from './components/sortableTable.js';
-import { toastError } from './components/toast.js';
+import { toastSuccess, toastError } from './components/toast.js';
 import { withLoading } from './components/loading.js';
 import { openModal, closeModal } from './components/modal.js';
 
@@ -160,6 +160,21 @@ function applyPrintOrientation(orientation) {
 applyPrintOrientation(localStorage.getItem('printOrientation') === 'landscape' ? 'landscape' : 'portrait');
 document.getElementById('print-orient-portrait').addEventListener('click', () => applyPrintOrientation('portrait'));
 document.getElementById('print-orient-landscape').addEventListener('click', () => applyPrintOrientation('landscape'));
+
+// โหลดข้อมูลใหม่โดยไม่รีเฟรชหน้าเว็บจริง (location.reload) เพราะ session/token เก็บอยู่ในตัวแปร JS ล้วน
+// (ไม่ใช้ localStorage) รีเฟรชหน้าจริงจะเคลียร์ค่านี้ทิ้งและเด้งออกไปหน้า login ทันที — ปุ่มนี้แค่ดึงข้อมูลอ้างอิง
+// (Cost Center/Lists/Settings ฯลฯ) และ re-render หน้าปัจจุบันใหม่ ระหว่างที่ session เดิมยังอยู่ครบ
+document.getElementById('reload-btn').addEventListener('click', async () => {
+  try {
+    await withLoading(async () => {
+      await loadReferenceData();
+      await renderRoute();
+    });
+    toastSuccess('โหลดข้อมูลใหม่สำเร็จ');
+  } catch (err) {
+    toastError(err.message || 'โหลดข้อมูลใหม่ไม่สำเร็จ');
+  }
+});
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
   try {
