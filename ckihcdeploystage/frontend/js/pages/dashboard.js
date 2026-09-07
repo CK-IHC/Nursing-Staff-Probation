@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escapeHtml, exportCsv, printReport, printIsolated } from '../utils.js';
+import { escapeHtml, exportCsv, printReport, printIsolated, formatDateTH, formatYoS } from '../utils.js';
 import { staffForm } from './staffDirectory.js';
 import { withLoading } from '../components/loading.js';
 import { toastError } from '../components/toast.js';
@@ -41,18 +41,26 @@ function monthBadge(status) {
   return status === 'เสร็จสิ้น' ? 'badge-green' : 'badge-gray';
 }
 
+// หัวตารางคอลัมน์ข้อมูลพนักงานที่ใช้ร่วมกันทั้งสองตารางแจ้งเตือน (ตรงกับ identityCellsHtml ด้านล่าง)
+const IDENTITY_HEAD_CELLS = '<th>ตำแหน่ง</th><th>Cost Center</th><th>วันที่เริ่มงาน</th><th>YoS</th><th>Manager</th>';
+
+// คอลัมน์ข้อมูลพนักงานที่ใช้ร่วมกันทั้งสองตารางแจ้งเตือน (ตำแหน่ง/Cost Center/วันที่เริ่มงาน/YoS/Manager)
+function identityCellsHtml(r) {
+  return `<td>${escapeHtml(r.Position || '—')}</td><td>${escapeHtml(r.CostCenterName || '—')}</td><td>${r.HireDate ? formatDateTH(r.HireDate) : '—'}</td><td>${formatYoS(r.HireDate)}</td><td>${escapeHtml(r.ManagerName || '—')}</td>`;
+}
+
 // withActions: false สำหรับตอนพิมพ์ (printIsolated) — หน้าพิมพ์ไม่ต้องมีปุ่ม Edit
 function ladderRowsHtml(rows, withActions) {
-  return rows.length === 0 ? `<tr><td colspan="${withActions ? 5 : 4}" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>` : rows.map((r) => `
-    <tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td>${withActions ? `<td><button class="btn btn-ghost btn-sm" data-edit-ladder="${escapeHtml(r.EmployeeID)}">Edit</button></td>` : ''}</tr>`).join('');
+  return rows.length === 0 ? `<tr><td colspan="${withActions ? 10 : 9}" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>` : rows.map((r) => `
+    <tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td>${identityCellsHtml(r)}<td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td>${withActions ? `<td><button class="btn btn-ghost btn-sm" data-edit-ladder="${escapeHtml(r.EmployeeID)}">Edit</button></td>` : ''}</tr>`).join('');
 }
 
 function hrSendRowsHtml(rows, withActions) {
-  return rows.length === 0 ? `<tr><td colspan="${withActions ? 9 : 8}" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>` : rows.map((r) => {
+  return rows.length === 0 ? `<tr><td colspan="${withActions ? 14 : 13}" class="empty-state">ไม่มีรายการแจ้งเตือน</td></tr>` : rows.map((r) => {
     const m1 = monthStatus(r.Orient1Date), m2 = monthStatus(r.Orient2Date), m3 = monthStatus(r.Orient3Date), m4 = monthStatus(r.Orient4Date);
     const hr = r.OrientSentHRDate ? 'ส่งแล้ว' : 'รอส่ง';
     return `<tr>
-      <td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td>
+      <td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td>${identityCellsHtml(r)}<td>เดือนที่ ${r.Month}</td>
       <td><span class="badge ${monthBadge(m1)}">${m1}</span></td>
       <td><span class="badge ${monthBadge(m2)}">${m2}</span></td>
       <td><span class="badge ${monthBadge(m3)}">${m3}</span></td>
@@ -124,7 +132,7 @@ export async function render(container) {
       <h3>Apply Ladder Status — ยังไม่ดำเนินการ (เดือนที่ 5, 8, 10)</h3>
       <div class="table-wrap table-wrap-compact">
         <table class="data-table">
-          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th><th></th></tr></thead>
+          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th>${IDENTITY_HEAD_CELLS}<th>เดือนที่</th><th>Apply Ladder After Probation</th><th></th></tr></thead>
           <tbody>${ladderRowsHtml(ladderDue, true)}</tbody>
         </table>
       </div>
@@ -133,7 +141,7 @@ export async function render(container) {
       <h3>Orientation Checklist — ยังไม่ส่ง HR (เดือนที่ 5-11)</h3>
       <div class="table-wrap table-wrap-compact">
         <table class="data-table">
-          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>เช็คเดือนที่ 1</th><th>เช็คเดือนที่ 2</th><th>เช็คเดือนที่ 3</th><th>เช็คเดือนที่ 4</th><th>สถานะส่ง HR</th><th></th></tr></thead>
+          <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th>${IDENTITY_HEAD_CELLS}<th>เดือนที่</th><th>เช็คเดือนที่ 1</th><th>เช็คเดือนที่ 2</th><th>เช็คเดือนที่ 3</th><th>เช็คเดือนที่ 4</th><th>สถานะส่ง HR</th><th></th></tr></thead>
           <tbody>${hrSendRowsHtml(hrSendDue, true)}</tbody>
         </table>
       </div>
@@ -166,12 +174,12 @@ export async function render(container) {
     const html = `
       <h3>Apply Ladder Status — ยังไม่ดำเนินการ (เดือนที่ 5, 8, 10)</h3>
       <div class="table-wrap"><table class="data-table">
-        <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th></tr></thead>
+        <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th>${IDENTITY_HEAD_CELLS}<th>เดือนที่</th><th>Apply Ladder After Probation</th></tr></thead>
         <tbody>${ladderRowsHtml(ladderDue, false)}</tbody>
       </table></div>
       <h3 style="margin-top:18px;">Orientation Checklist — ยังไม่ส่ง HR (เดือนที่ 5-11)</h3>
       <div class="table-wrap"><table class="data-table">
-        <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>เช็คเดือนที่ 1</th><th>เช็คเดือนที่ 2</th><th>เช็คเดือนที่ 3</th><th>เช็คเดือนที่ 4</th><th>สถานะส่ง HR</th></tr></thead>
+        <thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th>${IDENTITY_HEAD_CELLS}<th>เดือนที่</th><th>เช็คเดือนที่ 1</th><th>เช็คเดือนที่ 2</th><th>เช็คเดือนที่ 3</th><th>เช็คเดือนที่ 4</th><th>สถานะส่ง HR</th></tr></thead>
         <tbody>${hrSendRowsHtml(hrSendDue, false)}</tbody>
       </table></div>`;
     printIsolated('รายการแจ้งเตือน (On Probation)', '', html);
@@ -196,10 +204,13 @@ export async function render(container) {
   document.getElementById('dash-export-reminders').addEventListener('click', () => {
     // คนละไฟล์ เพราะสองรายการมีคอลัมน์ไม่เหมือนกัน (exportCsv ใช้ key ของแถวแรกเป็นหัวตาราง)
     exportCsv('dashboard-reminders-apply-ladder.csv', ladderDue.map((r) => ({
-      EmployeeID: r.EmployeeID, ชื่อ: r.ThaiName, เดือนที่: r.Month, 'Apply Ladder After Probation': r.ApplyLadderStatus,
+      EmployeeID: r.EmployeeID, ชื่อ: r.ThaiName, ตำแหน่ง: r.Position, CostCenter: r.CostCenterName,
+      วันที่เริ่มงาน: r.HireDate, YoS: formatYoS(r.HireDate), Manager: r.ManagerName,
+      เดือนที่: r.Month, 'Apply Ladder After Probation': r.ApplyLadderStatus,
     })));
     exportCsv('dashboard-reminders-orientation-checklist.csv', hrSendDue.map((r) => ({
-      EmployeeID: r.EmployeeID, ชื่อ: r.ThaiName, เดือนที่: r.Month,
+      EmployeeID: r.EmployeeID, ชื่อ: r.ThaiName, ตำแหน่ง: r.Position, CostCenter: r.CostCenterName,
+      วันที่เริ่มงาน: r.HireDate, YoS: formatYoS(r.HireDate), Manager: r.ManagerName, เดือนที่: r.Month,
       เช็คเดือนที่1: monthStatus(r.Orient1Date), เช็คเดือนที่2: monthStatus(r.Orient2Date),
       เช็คเดือนที่3: monthStatus(r.Orient3Date), เช็คเดือนที่4: monthStatus(r.Orient4Date),
       สถานะส่งHR: r.OrientSentHRDate ? 'ส่งแล้ว' : 'รอส่ง',
