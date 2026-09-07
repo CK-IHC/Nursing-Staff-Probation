@@ -3,7 +3,7 @@ import { cache } from '../state.js';
 import { openModal, closeModal } from '../components/modal.js';
 import { toastSuccess, toastError } from '../components/toast.js';
 import { withLoading } from '../components/loading.js';
-import { escapeHtml, formatDateTH, debounce, exportCsv, printReport, printIsolated } from '../utils.js';
+import { escapeHtml, formatDateTH, formatYoS, debounce, exportCsv, printReport, printIsolated } from '../utils.js';
 import { ICON_CHECK, iconInline } from '../icons.js';
 
 // พิมพ์รายงาน Orientation Checklist รายบุคคล (หลายคนพร้อมกัน) — 1 การ์ดต่อคน
@@ -121,8 +121,8 @@ export async function render(container) {
         <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องส่ง Orientation Checklist ให้ HR (เดือนที่ 5-11) — ${hrSendDue.length} รายการ</div>
         <div class="card" style="margin-bottom:14px;">
           <div class="table-wrap table-wrap-compact">
-            <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th></th></tr></thead>
-            <tbody>${hrSendDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td><button class="btn btn-ghost btn-sm" data-edit-hrsend="${escapeHtml(r.EmployeeID)}">Edit</button></td></tr>`).join('')}</tbody></table>
+            <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>ตำแหน่ง</th><th>Cost Center</th><th>วันที่เริ่มงาน</th><th>YoS</th><th>Manager</th><th>เดือนที่</th><th></th></tr></thead>
+            <tbody>${hrSendDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>${escapeHtml(r.Position || '—')}</td><td>${escapeHtml(r.CostCenterName || '—')}</td><td>${r.HireDate ? formatDateTH(r.HireDate) : '—'}</td><td>${formatYoS(r.HireDate)}</td><td>${escapeHtml(r.ManagerName || '—')}</td><td>เดือนที่ ${r.Month}</td><td><button class="btn btn-ghost btn-sm" data-edit-hrsend="${escapeHtml(r.EmployeeID)}">Edit</button></td></tr>`).join('')}</tbody></table>
           </div>
         </div>`);
     }

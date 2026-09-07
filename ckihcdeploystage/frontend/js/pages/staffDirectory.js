@@ -201,7 +201,7 @@ export function staffForm(staff, onSaved, initialTab = 'general') {
         <div class="form-grid">
           <div class="field"><label>Employee ID *</label><input id="f-EmployeeID" value="${escapeHtml(staff?.EmployeeID || '')}" ${isEdit ? 'disabled' : ''} required /></div>
           <div class="field"><label>ชื่อ-นามสกุล *</label><input id="f-ThaiName" value="${escapeHtml(staff?.ThaiName || '')}" required /></div>
-          <div class="field"><label>ชื่อเล่น *</label><input id="f-NickName" value="${escapeHtml(staff?.NickName || '')}" required /></div>
+          <div class="field"><label>ชื่อเล่น</label><input id="f-NickName" value="${escapeHtml(staff?.NickName || '')}" /></div>
           <div class="field"><label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" id="f-Rehire" style="width:auto;" ${staff?.Rehire === 'TRUE' ? 'checked' : ''} /> Rehire</label></div>
           <div class="field"><label>วันที่เริ่มงาน *</label><input type="date" id="f-HireDate" value="${staff?.HireDate || ''}" required /></div>
           <div class="field"><label>ตำแหน่ง</label><select id="f-Position">${opts(listValues('Position'), staff?.Position, '-- เลือก --')}</select></div>
@@ -474,8 +474,8 @@ export async function render(container) {
         <div class="alert-banner alert-banner-gold">แจ้งเตือน: ต้องดำเนินการ Apply Ladder Status (เดือนที่ 5, 8, 10) — ${reminders.ladderDue.length} รายการ</div>
         <div class="card" style="margin-bottom:14px;">
           <div class="table-wrap table-wrap-compact">
-            <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>เดือนที่</th><th>Apply Ladder After Probation</th><th></th></tr></thead>
-            <tbody>${reminders.ladderDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td><td><button class="btn btn-ghost btn-sm" data-edit-ladder="${escapeHtml(r.EmployeeID)}">Edit</button></td></tr>`).join('')}</tbody></table>
+            <table class="data-table"><thead><tr><th>Employee ID</th><th>ชื่อ-นามสกุล</th><th>ตำแหน่ง</th><th>Cost Center</th><th>วันที่เริ่มงาน</th><th>YoS</th><th>Manager</th><th>เดือนที่</th><th>Apply Ladder After Probation</th><th></th></tr></thead>
+            <tbody>${reminders.ladderDue.map((r) => `<tr><td>${escapeHtml(r.EmployeeID)}</td><td>${escapeHtml(r.ThaiName)}</td><td>${escapeHtml(r.Position || '—')}</td><td>${escapeHtml(r.CostCenterName || '—')}</td><td>${r.HireDate ? formatDateTH(r.HireDate) : '—'}</td><td>${formatYoS(r.HireDate)}</td><td>${escapeHtml(r.ManagerName || '—')}</td><td>เดือนที่ ${r.Month}</td><td>${escapeHtml(r.ApplyLadderStatus)}</td><td><button class="btn btn-ghost btn-sm" data-edit-ladder="${escapeHtml(r.EmployeeID)}">Edit</button></td></tr>`).join('')}</tbody></table>
           </div>
         </div>` : '';
       box.querySelectorAll('[data-edit-ladder]').forEach((btn) => {

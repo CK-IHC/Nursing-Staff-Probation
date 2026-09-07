@@ -71,12 +71,16 @@ function dashboardReminders_() {
     if (m >= 5 && m <= 11 && !r.OrientSentHRDate) {
       hrSendDue.push({
         EmployeeID: r.EmployeeID, ThaiName: r.ThaiName, Month: m,
+        Position: r.Position, CostCenterName: r.CostCenterName, HireDate: r.HireDate, ManagerName: r.ManagerName,
         Orient1Date: r.Orient1Date, Orient2Date: r.Orient2Date, Orient3Date: r.Orient3Date, Orient4Date: r.Orient4Date,
         OrientSentHRDate: r.OrientSentHRDate,
       });
     }
     if ((m === 5 || m === 8 || m === 10) && (!r.ApplyLadderStatus || r.ApplyLadderStatus === 'NA')) {
-      ladderDue.push({ EmployeeID: r.EmployeeID, ThaiName: r.ThaiName, Month: m, ApplyLadderStatus: r.ApplyLadderStatus || 'NA' });
+      ladderDue.push({
+        EmployeeID: r.EmployeeID, ThaiName: r.ThaiName, Month: m, ApplyLadderStatus: r.ApplyLadderStatus || 'NA',
+        Position: r.Position, CostCenterName: r.CostCenterName, HireDate: r.HireDate, ManagerName: r.ManagerName,
+      });
     }
   });
   return ok_({ hrSendDue: hrSendDue, ladderDue: ladderDue, walkRoundDue: walkRoundDueList_() });
