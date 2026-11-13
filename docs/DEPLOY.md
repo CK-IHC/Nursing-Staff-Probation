@@ -2,9 +2,9 @@
 
 ระบบนี้ไม่มี database แยกต่างหาก — backend คือ Google Apps Script Web App
 ที่อ่าน/เขียนข้อมูลลง Google Sheets โดยตรง (ดู `apps-script/Data.gs`) ส่วน
-frontend คือ static site ที่ deploy บน Cloudflare Worker (`ckihcdeploystage/`)
-เรียก backend ผ่าน URL เดียวคือค่า `API_BASE` ใน
-`ckihcdeploystage/frontend/js/config.js`
+frontend คือ static site ที่ deploy บน Vercel (โฟลเดอร์ `frontend/` ที่ root
+ของ repo, กำหนดด้วย `vercel.json`) เรียก backend ผ่าน URL เดียวคือค่า
+`API_BASE` ใน `frontend/js/config.js`
 
 ถ้าหน้าเว็บขึ้น **"เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือ API URL"**
 แปลว่า browser ยิง request ไปที่ `API_BASE` แล้วไม่ได้รับ response กลับมาเลย
@@ -30,7 +30,7 @@ frontend คือ static site ที่ deploy บน Cloudflare Worker (`ckihc
 
 ## 2. อัปเดต config.js ฝั่ง frontend
 
-แก้ `ckihcdeploystage/frontend/js/config.js`:
+แก้ `frontend/js/config.js`:
 
 ```js
 window.APP_CONFIG = {
@@ -38,9 +38,11 @@ window.APP_CONFIG = {
 };
 ```
 
-ต้องเป็น URL จาก deployment **ล่าสุด**ที่ active อยู่จริง แล้ว deploy Worker
-ใหม่ (`npm run deploy` ใน `ckihcdeploystage/`) เพราะไฟล์นี้เป็น static asset
-— แก้ที่ repo อย่างเดียวไม่มีผลจนกว่าจะ deploy ทับของเดิม
+ต้องเป็น URL จาก deployment **ล่าสุด**ที่ active อยู่จริง แล้ว commit + push
+ขึ้น branch ที่ Vercel ผูกไว้ (เช่น `main`) เพราะไฟล์นี้เป็น static asset — แก้
+ที่ repo แล้ว Vercel จะ build/deploy ใหม่ให้อัตโนมัติ (ดูสถานะได้ที่แท็บ
+Deployments ของโปรเจกต์บน vercel.com) ถ้าอยากทดสอบจาก local ก่อน push ใช้
+`vercel --prod` (ต้องรัน `vercel login` และ `vercel link` ให้โปรเจกต์ก่อนครั้งแรก)
 
 ## 3. ทดสอบว่าเชื่อมสำเร็จหรือยัง
 
@@ -57,6 +59,16 @@ window.APP_CONFIG = {
   ข้อ 1.5 (Who has access) หรือ `SHEET_ID`
 - เปิดไม่ขึ้นเลย/timeout → deployment ถูกลบหรือยังไม่เคย deploy จริง ให้ทำ
   ข้อ 1 ใหม่ทั้งหมด
+
+## 0. ตั้งโปรเจกต์ Vercel ครั้งแรก (ทำครั้งเดียว)
+
+1. เข้า [vercel.com](https://vercel.com) → New Project → Import repo
+   `CK-IHC/Nursing-Staff-Probation` จาก GitHub
+2. Framework Preset: **Other** (ไม่มี build step) — Vercel จะอ่าน
+   `vercel.json` ที่ root ของ repo ซึ่งกำหนด `outputDirectory: "frontend"`
+   ไว้แล้ว ไม่ต้องตั้ง Build Command / Output Directory เพิ่มเอง
+3. Deploy — ทุกครั้งที่ push ขึ้น branch ที่ผูกไว้ (ปกติคือ `main`) Vercel จะ
+   deploy ใหม่ให้อัตโนมัติ และ PR แต่ละอันจะได้ preview URL แยกของตัวเอง
 
 ## หมายเหตุ: ชีต Admins (แยกจากชีต Staff)
 
